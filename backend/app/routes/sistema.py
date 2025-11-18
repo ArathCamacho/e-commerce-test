@@ -11,9 +11,16 @@ from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, Prod
 from app.models.Categoria import CategoriaResponseSchema
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
 from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
-from pydantic import BaseModel
 
 router = APIRouter()
+
+class ConsultaDisponibilidadSchema(BaseModel):
+    """Schema para consultar disponibilidad de múltiples productos"""
+    ids_productos: List[int]
+
+class ActualizarEstadoEnvioSchema(BaseModel):
+    id_pedido: int
+    nuevo_estado: str
 
 
 @router.post("/clientes/registro", response_model=ClienteResponseSchema)
