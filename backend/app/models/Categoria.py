@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class Categoria(Base):
-    __tablename__ = "Categoria"
+    __tablename__ = "categoria"
     
     id_categoria = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String(100), nullable=False)
