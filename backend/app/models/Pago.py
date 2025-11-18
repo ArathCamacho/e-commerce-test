@@ -1,90 +1,108 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Numeric, Text
+# ============================================
+# ARCHIVO COMPLETO: app/models/Producto.py
+# ============================================
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 from pydantic import BaseModel
-from datetime import datetime
 from typing import Optional
 
-class Pago(Base):
-    __tablename__ = "pago"
+# ============================================
+# MODELO SQLAlchemy (para la base de datos)
+# ============================================
+class Producto(Base):
+    __tablename__ = "producto"
     
-    id_pago = Column(Integer, primary_key=True, index=True)
-    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=False)
-    estado = Column(String(20), nullable=False)
-    monto = Column(Numeric(10, 2), nullable=False)
-    moneda = Column(String(10), default="MXN")
-    fecha = Column(DateTime, default=datetime.utcnow)
-    metodo = Column(String(20), default="TARJETA")
+    id_producto = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(200), nullable=False)
+    descripcion = Column(Text)
+    precio = Column(Numeric(10, 2), nullable=False)
+    stock = Column(Integer, nullable=False)
+    id_categoria = Column(Integer, ForeignKey("categoria.id_categoria"), nullable=False)
+    imagen_url = Column(String(500))
+    activo = Column(Boolean, default=True)
     
-    # Relaciones
-    pedido = relationship("Pedido", back_populates="pagos")
-    solicitudes = relationship("Pago_Solicitud", back_populates="pago")
-    respuestas = relationship("Pago_Respuesta", back_populates="pago")
-
-class Pago_Solicitud(Base):
-    __tablename__ = "pago_solicitud"
-    
-    id_solicitud = Column(Integer, primary_key=True, index=True)
-    id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False)
-    numero_tarjeta_origen = Column(String(25), nullable=False)
-    numero_tarjeta_destino = Column(String(25), nullable=False)
-    nombre_cliente = Column(String(150), nullable=False)
-    mes_exp = Column(Integer, nullable=False)
-    anio_exp = Column(Integer, nullable=False)
-    cvv = Column(String(10), nullable=False)
-    monto = Column(Numeric(10, 2), nullable=False)
-    moneda = Column(String(10), default="MXN")
-    tipo = Column(String(20), default="TRANSFERENCIA")
-    creada_utc = Column(DateTime, default=datetime.utcnow)
-    request_json = Column(Text)
+    # CAMPOS PARA API DISTRIBUIDA
+    store_id = Column(Integer, default=1)
+    talla = Column(String(20))
+    color = Column(String(50))
+    duracion_minutos = Column(Integer)
     
     # Relaciones
-    pago = relationship("Pago", back_populates="solicitudes")
+    categoria = relationship("Categoria", back_populates="productos")
+    items_carrito = relationship("Carrito_Item", back_populates="producto")
+    items_pedido = relationship("Pedido_Item", back_populates="producto")
 
-class Pago_Respuesta(Base):
-    __tablename__ = "pago_respuesta"
-    
-    id_respuesta = Column(Integer, primary_key=True, index=True)
-    id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False)
-    nombre_comercio = Column(String(200))
-    creada_utc = Column(DateTime)
-    id_transaccion = Column(String(100))
-    tipo_transaccion = Column(String(50))
-    monto_transaccion = Column(Numeric(10, 2))
-    moneda = Column(String(10))
-    marca_tarjeta = Column(String(50))
-    numero_tarjeta = Column(String(25))
-    numero_autorizacion = Column(String(100))
-    nombre_estado = Column(String(50))
-    firma = Column(String(50))
-    mensaje = Column(String(200))
-    response_json = Column(Text)
-    fecha_registro = Column(DateTime, default=datetime.utcnow)
-    
-    # Relaciones
-    pago = relationship("Pago", back_populates="respuestas")
 
-# Schemas de Pydantic
-class BancoSolicitudSchema(BaseModel):
-    NumeroTarjetaOrigen: str
-    NumeroTarjetaDestino: str
-    NombreCliente: str
-    MesExp: int
-    AnioExp: int
-    Cvv: str
-    Monto: float
-    Moneda: str
+# ============================================
+# SCHEMAS PYDANTIC (para validación de API)
+# ============================================
 
-class BancoRespuestaSchema(BaseModel):
-    NombreComercio: Optional[str] = None
-    CreadaUTC: Optional[str] = None
-    IdTransaccion: Optional[str] = None
-    TipoTransaccion: Optional[str] = None
-    MontoTransaccion: Optional[float] = None
-    Moneda: Optional[str] = None
-    MarcaTarjeta: Optional[str] = None
-    NumeroTarjeta: Optional[str] = None
-    NumeroAutorizacion: Optional[str] = None
-    NombreEstado: Optional[str] = None
-    Firma: Optional[str] = None
-    Mensaje: Optional[str] = None
+class ProductoResponseSchema(BaseModel):
+    """Schema para devolver un producto en la respuesta"""
+    id_producto: int
+    nombre: str
+    descripcion: Optional[str] = None
+    precio: float
+    stock: int
+    id_categoria: int
+    imagen_url: Optional[str] = None
+    activo: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class ProductoCreateSchema(BaseModel):
+    """Schema para crear un producto nuevo"""
+    nombre: str
+    descripcion: Optional[str] = None
+    precio: float
+    stock: int
+    id_categoria: int
+    imagen_url: Optional[str] = None
+    talla: Optional[str] = None
+    color: Optional[str] = None
+    duracion_minutos: Optional[int] = None
+
+
+class ProductoUpdateSchema(BaseModel):
+    """Schema para actualizar un producto existente"""
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio: Optional[float] = None
+    stock: Optional[int] = None
+    id_categoria: Optional[int] = None
+    imagen_url: Optional[str] = None
+    activo: Optional[bool] = None
+    talla: Optional[str] = None
+    color: Optional[str] = None
+    duracion_minutos: Optional[int] = None
+
+
+class ProductoCatalogoAPISchema(BaseModel):
+    """
+    Schema específico para la API distribuida
+    Formato que esperan otros equipos cuando consultan el catálogo
+    """
+    store_id: int
+    id: int
+    nombre: str
+    description: Optional[str] = None
+    precio: float
+    talla: Optional[str] = None
+    color: Optional[str] = None
+    stock: int
+    duracion_minutos: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SolicitudCatalogoSchema(BaseModel):
+    """
+    Schema para la solicitud que te hacen otros equipos
+    Body del POST cuando piden el catálogo
+    """
+    store_id: int
+    category: Optional[int] = None
