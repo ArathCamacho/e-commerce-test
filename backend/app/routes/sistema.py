@@ -213,3 +213,109 @@ async def obtener_todos_clientes(db: Session = Depends(get_db)):
     GET /api/clientes
     """
     return SistemaServices.obtener_todos_clientes(db)
+
+@router.get("/catalogo/api")
+async def obtener_catalogo_api(
+    store_id: int,
+    category: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    🌐 ENDPOINT PARA API DISTRIBUIDA
+    
+    Este endpoint es el que otros equipos van a llamar para obtener tu catálogo.
+    
+    Parámetros (Query Params):
+    - store_id: ID de tu tienda (obligatorio)
+    - category: ID de categoría (opcional)
+    
+    Ejemplos de uso:
+    
+    1. Obtener TODO el catálogo:
+       GET /api/catalogo/api?store_id=1
+    
+    2. Obtener solo productos de una categoría:
+       GET /api/catalogo/api?store_id=1&category=2
+    
+    Respuesta:
+    {
+        "store_id": 1,
+        "category": 2,
+        "total_productos": 5,
+        "productos": [
+            {
+                "store_id": 1,
+                "id": 8,
+                "nombre": "Playera Básica Negra",
+                "description": "Playera de algodón 100%",
+                "precio": 199.99,
+                "talla": "M",
+                "color": "Negro",
+                "stock": 100,
+                "duracion_minutos": null
+            }
+        ]
+    }
+    """
+    return SistemaServices.obtener_catalogo_api(db, store_id, category)
+
+
+@router.post("/catalogo/api")
+async def obtener_catalogo_api_post(
+    solicitud: SolicitudCatalogoSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    🌐 ENDPOINT PARA API DISTRIBUIDA (Método POST)
+    
+    Alternativa si otros equipos prefieren enviar los datos por POST
+    
+    Body ejemplo:
+    {
+        "store_id": 1,
+        "category": 2
+    }
+    
+    Respuesta igual que el GET
+    """
+    return SistemaServices.obtener_catalogo_api(
+        db, 
+        solicitud.store_id, 
+        solicitud.category
+    )
+
+
+# ============================================
+# ENDPOINT PARA LISTAR TUS CATEGORÍAS
+# (Para que otros equipos sepan qué categorías tienes)
+# ============================================
+
+@router.get("/categorias/lista")
+async def listar_categorias_api(db: Session = Depends(get_db)):
+    """
+    📂 Lista de categorías disponibles
+    
+    Para que otros equipos sepan qué IDs de categoría pueden consultar
+    
+    Respuesta:
+    {
+        "total_categorias": 5,
+        "categorias": [
+            {"id_categoria": 1, "nombre": "Electrónica"},
+            {"id_categoria": 2, "nombre": "Ropa"},
+            ...
+        ]
+    }
+    """
+    categorias = db.query(Categoria).all()
+    return {
+        "total_categorias": len(categorias),
+        "categorias": [
+            {
+                "id_categoria": c.id_categoria,
+                "nombre": c.nombre,
+                "descripcion": c.descripcion
+            }
+            for c in categorias
+        ]
+    }

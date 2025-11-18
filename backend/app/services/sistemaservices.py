@@ -837,3 +837,62 @@ class SistemaServices:
             telefono=c.telefono,
             fecha_registro=c.fecha_registro
         ) for c in clientes]
+
+
+    @staticmethod
+    def obtener_catalogo_api(db: Session, store_id: int, category: int = None):
+        """
+        🌐 ENDPOINT PARA API DISTRIBUIDA
+        
+        Este es el endpoint que otros equipos consultarán.
+        
+        Parámetros:
+        - store_id: ID de tu tienda (siempre será 1 en tu caso)
+        - category: ID de categoría (opcional, si no se envía devuelve todo)
+        
+        Devuelve productos en el formato específico que necesitan:
+        {
+            "store_id": 1,
+            "id": 5,
+            "nombre": "Producto X",
+            "description": "Descripción...",
+            "precio": 299.99,
+            "talla": "M",
+            "color": "Rojo",
+            "stock": 10,
+            "duracion_minutos": null
+        }
+        """
+        # Query base: productos activos de esta tienda
+        query = db.query(Producto).filter(
+            Producto.activo == True,
+            Producto.store_id == store_id
+        )
+        
+        # Si enviaron categoría específica, filtrar por ella
+        if category is not None:
+            query = query.filter(Producto.id_categoria == category)
+        
+        productos = query.all()
+        
+        # Formatear respuesta según el schema que esperan
+        catalogo = []
+        for p in productos:
+            catalogo.append({
+                "store_id": p.store_id,
+                "id": p.id_producto,
+                "nombre": p.nombre,
+                "description": p.descripcion,
+                "precio": float(p.precio),
+                "talla": p.talla,
+                "color": p.color,
+                "stock": p.stock,
+                "duracion_minutos": p.duracion_minutos
+            })
+        
+        return {
+            "store_id": store_id,
+            "category": category,
+            "total_productos": len(catalogo),
+            "productos": catalogo
+        }
