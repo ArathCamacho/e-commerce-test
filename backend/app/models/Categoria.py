@@ -10,7 +10,7 @@ class Categoria(Base):
     nombre = Column(String(100), nullable=False)
     descripcion = Column(String(300))
     
-    # Relación con Producto (UN LADO)
+    # Relación con Producto
     productos = relationship("Producto", back_populates="categoria")
 
 # Schemas de Pydantic
