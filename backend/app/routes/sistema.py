@@ -137,28 +137,46 @@ async def actualizar_estado_envio(data: ActualizarEstadoEnvioSchema, db: Session
 @router.get("/catalogo")
 async def obtener_catalogo(db: Session = Depends(get_db)):
     """
-    📋 Endpoint principal del catálogo
+    🛒 CATÁLOGO COMPLETO - ENDPOINT PRINCIPAL
     
-    Devuelve el catálogo completo con:
-    - Todas las categorías
-    - Productos por categoría
-    - Disponibilidad de cada producto
-    - Stock y precios actualizados
+    Devuelve TODOS los productos disponibles con:
+    - ID, nombre, descripción
+    - Precio
+    - Stock disponible
+    - Estado de disponibilidad (DISPONIBLE, ULTIMAS_UNIDADES, AGOTADO)
+    - Categoría
+    - Si se puede ordenar o no
     
-    Este endpoint es para que otros sistemas consulten el catálogo
+    📌 Este es el endpoint que otros equipos deben usar para consultar tu catálogo
+    
+    Ejemplo de uso:
+    GET /api/catalogo
     """
     return SistemaServices.obtener_catalogo_completo(db)
+
+
+@router.get("/catalogo/por-categoria")
+async def obtener_catalogo_por_categoria(db: Session = Depends(get_db)):
+    """
+    📂 CATÁLOGO ORGANIZADO POR CATEGORÍAS
+    
+    Devuelve todos los productos agrupados por categoría
+    
+    Ejemplo de uso:
+    GET /api/catalogo/por-categoria
+    """
+    return SistemaServices.obtener_catalogo_por_categoria(db)
 
 
 @router.get("/catalogo/disponibilidad/{id_producto}")
 async def consultar_disponibilidad_producto(id_producto: int, db: Session = Depends(get_db)):
     """
-    🔍 Consulta la disponibilidad de UN producto específico
+    🔍 CONSULTAR DISPONIBILIDAD DE UN PRODUCTO
     
-    Devuelve:
-    - Stock actual
-    - Estado de disponibilidad
-    - Si se puede ordenar o no
+    Verifica si un producto específico está disponible y cuánto stock hay
+    
+    Ejemplo de uso:
+    GET /api/catalogo/disponibilidad/5
     """
     return SistemaServices.consultar_disponibilidad(db, id_producto)
 
@@ -169,14 +187,17 @@ async def consultar_disponibilidad_productos(
     db: Session = Depends(get_db)
 ):
     """
-    🔍 Consulta la disponibilidad de MÚLTIPLES productos a la vez
+    🔍 CONSULTAR DISPONIBILIDAD DE MÚLTIPLES PRODUCTOS
+    
+    Verifica la disponibilidad de varios productos a la vez
     
     Body ejemplo:
     {
-        "ids_productos": [1, 2, 3, 4, 5]
+        "ids_productos": [1, 2, 3, 5, 10]
     }
     
-    Útil cuando otro sistema quiere verificar varios productos antes de hacer pedidos
+    Ejemplo de uso:
+    POST /api/catalogo/disponibilidad/multiple
     """
     return SistemaServices.consultar_disponibilidad_multiple(db, data.ids_productos)
 
@@ -184,8 +205,11 @@ async def consultar_disponibilidad_productos(
 @router.get("/clientes", response_model=list[ClienteResponseSchema])
 async def obtener_todos_clientes(db: Session = Depends(get_db)):
     """
-    👥 Obtiene todos los clientes registrados
+    👥 LISTAR TODOS LOS CLIENTES
     
-    Para consultas administrativas o integración con otros sistemas
+    Devuelve todos los clientes registrados en el sistema
+    
+    Ejemplo de uso:
+    GET /api/clientes
     """
     return SistemaServices.obtener_todos_clientes(db)

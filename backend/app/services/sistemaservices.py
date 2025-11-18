@@ -634,3 +634,206 @@ class SistemaServices:
             telefono=c.telefono,
             fecha_registro=c.fecha_registro
         ) for c in clientes]
+    
+    @staticmethod
+    def obtener_catalogo_completo(db: Session):
+        """
+        🛒 ENDPOINT PRINCIPAL DEL CATÁLOGO
+        
+        Devuelve TODOS los productos disponibles con:
+        - Información completa del producto
+        - Stock actual
+        - Disponibilidad
+        - Categoría
+        - Precio
+        
+        Este es el endpoint que otros equipos consultarán para ver tu catálogo
+        """
+        productos = db.query(Producto).filter(Producto.activo == True).all()
+        
+        catalogo = {
+            "total_productos": len(productos),
+            "fecha_consulta": datetime.now().isoformat(),
+            "productos": []
+        }
+        
+        for producto in productos:
+            # Determinar disponibilidad
+            if producto.stock == 0:
+                disponibilidad = "AGOTADO"
+                puede_ordenar = False
+            elif producto.stock <= 5:
+                disponibilidad = "ULTIMAS_UNIDADES"
+                puede_ordenar = True
+            else:
+                disponibilidad = "DISPONIBLE"
+                puede_ordenar = True
+            
+            # Obtener categoría
+            categoria = db.query(Categoria).filter(
+                Categoria.id_categoria == producto.id_categoria
+            ).first()
+            
+            catalogo["productos"].append({
+                "id_producto": producto.id_producto,
+                "nombre": producto.nombre,
+                "descripcion": producto.descripcion,
+                "precio": float(producto.precio),
+                "stock_disponible": producto.stock,
+                "disponibilidad": disponibilidad,
+                "puede_ordenar": puede_ordenar,
+                "categoria": {
+                    "id_categoria": categoria.id_categoria,
+                    "nombre": categoria.nombre
+                } if categoria else None,
+                "imagen_url": producto.imagen_url,
+                "activo": producto.activo
+            })
+        
+        return catalogo
+
+
+    @staticmethod
+    def obtener_catalogo_por_categoria(db: Session):
+        """
+        📂 Catálogo organizado por categorías
+        
+        Agrupa todos los productos por su categoría
+        Útil para mostrar el catálogo organizado
+        """
+        categorias = db.query(Categoria).all()
+        
+        catalogo = {
+            "total_categorias": len(categorias),
+            "total_productos": 0,
+            "fecha_consulta": datetime.now().isoformat(),
+            "categorias": []
+        }
+        
+        for categoria in categorias:
+            productos = db.query(Producto).filter(
+                Producto.id_categoria == categoria.id_categoria,
+                Producto.activo == True
+            ).all()
+            
+            productos_lista = []
+            for producto in productos:
+                if producto.stock == 0:
+                    disponibilidad = "AGOTADO"
+                    puede_ordenar = False
+                elif producto.stock <= 5:
+                    disponibilidad = "ULTIMAS_UNIDADES"
+                    puede_ordenar = True
+                else:
+                    disponibilidad = "DISPONIBLE"
+                    puede_ordenar = True
+                
+                productos_lista.append({
+                    "id_producto": producto.id_producto,
+                    "nombre": producto.nombre,
+                    "descripcion": producto.descripcion,
+                    "precio": float(producto.precio),
+                    "stock_disponible": producto.stock,
+                    "disponibilidad": disponibilidad,
+                    "puede_ordenar": puede_ordenar,
+                    "imagen_url": producto.imagen_url
+                })
+            
+            if productos_lista:  # Solo agregar categorías que tengan productos
+                catalogo["categorias"].append({
+                    "id_categoria": categoria.id_categoria,
+                    "nombre_categoria": categoria.nombre,
+                    "descripcion": categoria.descripcion,
+                    "total_productos": len(productos_lista),
+                    "productos": productos_lista
+                })
+                catalogo["total_productos"] += len(productos_lista)
+        
+        return catalogo
+
+
+    @staticmethod
+    def consultar_disponibilidad(db: Session, id_producto: int):
+        """
+        🔍 Consulta disponibilidad de UN producto específico
+        
+        Para que otros sistemas verifiquen antes de hacer pedidos
+        """
+        producto = db.query(Producto).filter(Producto.id_producto == id_producto).first()
+        
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        # Determinar disponibilidad y nivel de stock
+        if producto.stock == 0:
+            disponibilidad = "AGOTADO"
+            nivel_stock = "SIN_STOCK"
+            puede_ordenar = False
+        elif producto.stock <= 5:
+            disponibilidad = "ULTIMAS_UNIDADES"
+            nivel_stock = "BAJO"
+            puede_ordenar = True
+        elif producto.stock <= 20:
+            disponibilidad = "DISPONIBLE"
+            nivel_stock = "MEDIO"
+            puede_ordenar = True
+        else:
+            disponibilidad = "DISPONIBLE"
+            nivel_stock = "ALTO"
+            puede_ordenar = True
+        
+        return {
+            "id_producto": producto.id_producto,
+            "nombre": producto.nombre,
+            "stock_disponible": producto.stock,
+            "disponibilidad": disponibilidad,
+            "nivel_stock": nivel_stock,
+            "precio": float(producto.precio),
+            "activo": producto.activo,
+            "puede_ordenar": puede_ordenar and producto.activo
+        }
+
+
+    @staticmethod
+    def consultar_disponibilidad_multiple(db: Session, ids_productos: list[int]):
+        """
+        🔍 Consulta disponibilidad de MÚLTIPLES productos
+        
+        Útil cuando otro sistema quiere verificar varios productos a la vez
+        """
+        resultados = []
+        
+        for id_producto in ids_productos:
+            try:
+                disponibilidad = SistemaServices.consultar_disponibilidad(db, id_producto)
+                resultados.append(disponibilidad)
+            except HTTPException:
+                resultados.append({
+                    "id_producto": id_producto,
+                    "error": "Producto no encontrado",
+                    "disponibilidad": "NO_EXISTE"
+                })
+        
+        return {
+            "total_consultados": len(ids_productos),
+            "fecha_consulta": datetime.now().isoformat(),
+            "productos": resultados
+        }
+
+
+    @staticmethod
+    def obtener_todos_clientes(db: Session) -> list[ClienteResponseSchema]:
+        """
+        👥 Obtiene todos los clientes registrados
+        
+        Para consultas administrativas o integración con otros sistemas
+        """
+        clientes = db.query(Cliente).all()
+        return [ClienteResponseSchema(
+            id_cliente=c.id_cliente,
+            nombre=c.nombre,
+            apellido=c.apellido,
+            correo=c.correo,
+            telefono=c.telefono,
+            fecha_registro=c.fecha_registro
+        ) for c in clientes]
