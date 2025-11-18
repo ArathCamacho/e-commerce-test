@@ -1,0 +1,533 @@
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from passlib.context import CryptContext
+import httpx
+import json
+from datetime import datetime
+from decimal import Decimal
+
+from app.models.Cliente import Cliente, ClienteRegistroSchema, ClienteResponseSchema
+from app.models.Direccion import Direccion, DireccionCreateSchema, DireccionResponseSchema
+from app.models.Categoria import Categoria, CategoriaResponseSchema
+from app.models.Producto import Producto, ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema
+from app.models.Carrito import Carrito, Carrito_Item, CarritoAgregarSchema, CarritoResponseSchema, CarritoItemResponseSchema
+from app.models.Pedido import Pedido, Pedido_Item, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
+from app.models.Pago import Pago, Pago_Solicitud, Pago_Respuesta, BancoSolicitudSchema, BancoRespuestaSchema
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+BANCO_API_URL = "http://localhost:5000/api/transacciones"
+ENVIOS_API_URL = "http://localhost:6000/api/envios/crear"
+TARJETA_DESTINO_COMERCIO = "0000 0009 8765 4321"  
+
+class SistemaServices:
+    
+    
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hashea la contraseña usando bcrypt"""
+        if not isinstance(password, str):
+            password = str(password, "utf-8") if isinstance(password, bytes) else str(password)
+        
+        password = password.strip()
+        
+        if len(password) == 0:
+            raise HTTPException(status_code=400, detail="La contraseña no puede estar vacía")
+        
+        if len(password.encode("utf-8")) > 72:
+            password = password[:72]
+        
+        return pwd_context.hash(password)
+    
+    @staticmethod
+    def verificar_password(plain_password: str, hash_password: str) -> bool:
+        return pwd_context.verify(plain_password, hash_password)
+    
+    @staticmethod
+    def registrar_cliente(db: Session, data: ClienteRegistroSchema) -> ClienteResponseSchema:
+        """Registra un nuevo cliente"""
+        existing = db.query(Cliente).filter(Cliente.correo == data.correo).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Correo ya registrado")
+        
+        hashed_password = SistemaServices.hash_password(data.contrasena)
+        
+        nuevo_cliente = Cliente(
+            nombre=data.nombre,
+            apellido=data.apellido,
+            correo=data.correo,
+            telefono=data.telefono,
+            contrasena=hashed_password
+        )
+        
+        db.add(nuevo_cliente)
+        db.commit()
+        db.refresh(nuevo_cliente)
+        
+        return ClienteResponseSchema(
+            id_cliente=nuevo_cliente.id_cliente,
+            nombre=nuevo_cliente.nombre,
+            apellido=nuevo_cliente.apellido,
+            correo=nuevo_cliente.correo,
+            telefono=nuevo_cliente.telefono,
+            fecha_registro=nuevo_cliente.fecha_registro
+        )
+    
+    @staticmethod
+    def login_cliente(db: Session, correo: str, contrasena: str) -> ClienteResponseSchema:
+        """Login de cliente"""
+        cliente = db.query(Cliente).filter(Cliente.correo == correo).first()
+        
+        if not cliente:
+            raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
+        
+        password_valida = SistemaServices.verificar_password(contrasena, cliente.contrasena)
+        
+        if not password_valida:
+            raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
+        
+        return ClienteResponseSchema(
+            id_cliente=cliente.id_cliente,
+            nombre=cliente.nombre,
+            apellido=cliente.apellido,
+            correo=cliente.correo,
+            telefono=cliente.telefono,
+            fecha_registro=cliente.fecha_registro
+        )
+    
+    @staticmethod
+    def crear_direccion(db: Session, id_cliente: int, data: DireccionCreateSchema) -> DireccionResponseSchema:
+        """Crea una nueva dirección para un cliente"""
+        cliente = db.query(Cliente).filter(Cliente.id_cliente == id_cliente).first()
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        
+        nueva_direccion = Direccion(
+            id_cliente=id_cliente,
+            calle=data.calle,
+            ciudad=data.ciudad,
+            estado=data.estado,
+            codigo_postal=data.codigo_postal,
+            referencias=data.referencias
+        )
+        
+        db.add(nueva_direccion)
+        db.commit()
+        db.refresh(nueva_direccion)
+        
+        return DireccionResponseSchema.from_orm(nueva_direccion)
+    
+    @staticmethod
+    def obtener_direcciones_cliente(db: Session, id_cliente: int) -> list[DireccionResponseSchema]:
+        """Obtiene todas las direcciones de un cliente"""
+        direcciones = db.query(Direccion).filter(Direccion.id_cliente == id_cliente).all()
+        return [DireccionResponseSchema.from_orm(d) for d in direcciones]
+
+    
+    @staticmethod
+    def obtener_productos(db: Session) -> list[ProductoResponseSchema]:
+        """Obtiene todos los productos activos"""
+        productos = db.query(Producto).filter(Producto.activo == True).all()
+        return [ProductoResponseSchema.from_orm(p) for p in productos]
+    
+    @staticmethod
+    def obtener_producto(db: Session, id_producto: int) -> ProductoResponseSchema:
+        """Obtiene un producto por ID"""
+        producto = db.query(Producto).filter(Producto.id_producto == id_producto).first()
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        return ProductoResponseSchema.from_orm(producto)
+    
+    @staticmethod
+    def crear_producto(db: Session, data: ProductoCreateSchema) -> ProductoResponseSchema:
+        """Crea un nuevo producto"""
+        categoria = db.query(Categoria).filter(Categoria.id_categoria == data.id_categoria).first()
+        if not categoria:
+            raise HTTPException(status_code=404, detail="Categoría no encontrada")
+        
+        nuevo_producto = Producto(
+            nombre=data.nombre,
+            descripcion=data.descripcion,
+            precio=data.precio,
+            stock=data.stock,
+            id_categoria=data.id_categoria,
+            imagen_url=data.imagen_url
+        )
+        
+        db.add(nuevo_producto)
+        db.commit()
+        db.refresh(nuevo_producto)
+        
+        return ProductoResponseSchema.from_orm(nuevo_producto)
+    
+    @staticmethod
+    def actualizar_producto(db: Session, id_producto: int, data: ProductoUpdateSchema) -> ProductoResponseSchema:
+        """Actualiza un producto"""
+        producto = db.query(Producto).filter(Producto.id_producto == id_producto).first()
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        if data.nombre is not None:
+            producto.nombre = data.nombre
+        if data.descripcion is not None:
+            producto.descripcion = data.descripcion
+        if data.precio is not None:
+            producto.precio = data.precio
+        if data.stock is not None:
+            producto.stock = data.stock
+        if data.id_categoria is not None:
+            producto.id_categoria = data.id_categoria
+        if data.imagen_url is not None:
+            producto.imagen_url = data.imagen_url
+        if data.activo is not None:
+            producto.activo = data.activo
+        
+        db.commit()
+        db.refresh(producto)
+        
+        return ProductoResponseSchema.from_orm(producto)
+    
+    @staticmethod
+    def obtener_categorias(db: Session) -> list[CategoriaResponseSchema]:
+        """Obtiene todas las categorías"""
+        categorias = db.query(Categoria).all()
+        return [CategoriaResponseSchema.from_orm(c) for c in categorias]
+
+    @staticmethod
+    def agregar_al_carrito(db: Session, data: CarritoAgregarSchema) -> CarritoResponseSchema:
+        """Agrega un producto al carrito del cliente"""
+        cliente = db.query(Cliente).filter(Cliente.id_cliente == data.id_cliente).first()
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        producto = db.query(Producto).filter(Producto.id_producto == data.id_producto).first()
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        if producto.stock < data.cantidad:
+            raise HTTPException(status_code=400, detail=f"Stock insuficiente. Disponible: {producto.stock}")
+        
+        carrito = db.query(Carrito).filter(Carrito.id_cliente == data.id_cliente).first()
+        if not carrito:
+            carrito = Carrito(id_cliente=data.id_cliente)
+            db.add(carrito)
+            db.commit()
+            db.refresh(carrito)
+
+        item_existente = db.query(Carrito_Item).filter(
+            Carrito_Item.id_carrito == carrito.id_carrito,
+            Carrito_Item.id_producto == data.id_producto
+        ).first()
+        
+        if item_existente:
+            item_existente.cantidad += data.cantidad
+        else:
+            nuevo_item = Carrito_Item(
+                id_carrito=carrito.id_carrito,
+                id_producto=data.id_producto,
+                cantidad=data.cantidad,
+                precio_unitario=producto.precio
+            )
+            db.add(nuevo_item)
+        
+        db.commit()
+        
+        return SistemaServices.obtener_carrito(db, data.id_cliente)
+    
+    @staticmethod
+    def obtener_carrito(db: Session, id_cliente: int) -> CarritoResponseSchema:
+        """Obtiene el carrito de un cliente"""
+        carrito = db.query(Carrito).filter(Carrito.id_cliente == id_cliente).first()
+        
+        if not carrito:
+            raise HTTPException(status_code=404, detail="Carrito no encontrado")
+        
+        items_response = []
+        total = 0.0
+        
+        for item in carrito.items:
+            subtotal = float(item.precio_unitario) * item.cantidad
+            total += subtotal
+            
+            items_response.append(CarritoItemResponseSchema(
+                id_item=item.id_item,
+                id_producto=item.id_producto,
+                nombre_producto=item.producto.nombre,
+                cantidad=item.cantidad,
+                precio_unitario=float(item.precio_unitario),
+                subtotal=subtotal
+            ))
+        
+        return CarritoResponseSchema(
+            id_carrito=carrito.id_carrito,
+            id_cliente=carrito.id_cliente,
+            items=items_response,
+            total=total
+        )
+    
+    @staticmethod
+    def eliminar_item_carrito(db: Session, id_item: int):
+        """Elimina un item del carrito"""
+        item = db.query(Carrito_Item).filter(Carrito_Item.id_item == id_item).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Item no encontrado")
+        
+        db.delete(item)
+        db.commit()
+        
+        return {"message": "Item eliminado del carrito"}
+
+    
+    @staticmethod
+    def crear_pedido(db: Session, data: PedidoCreateSchema) -> PedidoResponseSchema:
+        """Crea un pedido a partir del carrito del cliente"""
+        carrito = db.query(Carrito).filter(Carrito.id_cliente == data.id_cliente).first()
+        
+        if not carrito or not carrito.items:
+            raise HTTPException(status_code=400, detail="El carrito está vacío")
+
+        direccion = db.query(Direccion).filter(Direccion.id_direccion == data.id_direccion).first()
+        if not direccion:
+            raise HTTPException(status_code=404, detail="Dirección no encontrada")
+        
+        total = Decimal(0)
+        for item in carrito.items:
+            producto = item.producto
+            if producto.stock < item.cantidad:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock}"
+                )
+            total += item.precio_unitario * item.cantidad
+
+        nuevo_pedido = Pedido(
+            id_cliente=data.id_cliente,
+            id_direccion=data.id_direccion,
+            total=total,
+            estado="PENDIENTE"
+        )
+        
+        db.add(nuevo_pedido)
+        db.flush()
+
+        for item in carrito.items:
+            pedido_item = Pedido_Item(
+                id_pedido=nuevo_pedido.id_pedido,
+                id_producto=item.id_producto,
+                cantidad=item.cantidad,
+                precio_unitario=item.precio_unitario
+            )
+            db.add(pedido_item)
+        
+        db.commit()
+        db.refresh(nuevo_pedido)
+        
+        return SistemaServices.obtener_pedido(db, nuevo_pedido.id_pedido)
+    
+    @staticmethod
+    def obtener_pedido(db: Session, id_pedido: int) -> PedidoResponseSchema:
+        """Obtiene un pedido por ID"""
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        items_response = []
+        for item in pedido.items:
+            subtotal = float(item.precio_unitario) * item.cantidad
+            items_response.append(PedidoItemResponseSchema(
+                id_pedido_item=item.id_pedido_item,
+                id_producto=item.id_producto,
+                nombre_producto=item.producto.nombre,
+                cantidad=item.cantidad,
+                precio_unitario=float(item.precio_unitario),
+                subtotal=subtotal
+            ))
+        
+        return PedidoResponseSchema(
+            id_pedido=pedido.id_pedido,
+            id_cliente=pedido.id_cliente,
+            id_direccion=pedido.id_direccion,
+            total=float(pedido.total),
+            estado=pedido.estado,
+            fecha_creacion=pedido.fecha_creacion,
+            items=items_response
+        )
+    
+    @staticmethod
+    async def procesar_pago(db: Session, id_pedido: int, numero_tarjeta_origen: str, 
+                           nombre_cliente: str, mes_exp: int, anio_exp: int, cvv: str):
+        """Procesa el pago de un pedido enviando solicitud al banco"""
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        if pedido.estado != "PENDIENTE":
+            raise HTTPException(status_code=400, detail=f"El pedido ya fue procesado. Estado: {pedido.estado}")
+        
+        nuevo_pago = Pago(
+            id_pedido=id_pedido,
+            estado="PENDIENTE",
+            monto=pedido.total,
+            moneda="MXN",
+            metodo="TARJETA"
+        )
+        
+        db.add(nuevo_pago)
+        db.flush()
+
+        solicitud_banco = BancoSolicitudSchema(
+            NumeroTarjetaOrigen=numero_tarjeta_origen,
+            NumeroTarjetaDestino=TARJETA_DESTINO_COMERCIO,
+            NombreCliente=nombre_cliente,
+            MesExp=mes_exp,
+            AnioExp=anio_exp,
+            Cvv=cvv,
+            Monto=float(pedido.total),
+            Moneda="MXN"
+        )
+
+        pago_solicitud = Pago_Solicitud(
+            id_pago=nuevo_pago.id_pago,
+            numero_tarjeta_origen=numero_tarjeta_origen,
+            numero_tarjeta_destino=TARJETA_DESTINO_COMERCIO,
+            nombre_cliente=nombre_cliente,
+            mes_exp=mes_exp,
+            anio_exp=anio_exp,
+            cvv=cvv,
+            monto=pedido.total,
+            moneda="MXN",
+            tipo="TRANSFERENCIA",
+            request_json=solicitud_banco.json()
+        )
+        
+        db.add(pago_solicitud)
+        db.commit()
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    BANCO_API_URL,
+                    json=solicitud_banco.dict(),
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    respuesta_banco = response.json()
+                    
+                    pago_respuesta = Pago_Respuesta(
+                        id_pago=nuevo_pago.id_pago,
+                        nombre_comercio=respuesta_banco.get("NombreComercio"),
+                        creada_utc=datetime.fromisoformat(respuesta_banco.get("CreadaUTC").replace("Z", "+00:00")) if respuesta_banco.get("CreadaUTC") else None,
+                        id_transaccion=respuesta_banco.get("IdTransaccion"),
+                        tipo_transaccion=respuesta_banco.get("TipoTransaccion"),
+                        monto_transaccion=respuesta_banco.get("MontoTransaccion"),
+                        moneda=respuesta_banco.get("Moneda"),
+                        marca_tarjeta=respuesta_banco.get("MarcaTarjeta"),
+                        numero_tarjeta=respuesta_banco.get("NumeroTarjeta"),
+                        numero_autorizacion=respuesta_banco.get("NumeroAutorizacion"),
+                        nombre_estado=respuesta_banco.get("NombreEstado"),
+                        firma=respuesta_banco.get("Firma"),
+                        mensaje=respuesta_banco.get("Mensaje"),
+                        response_json=json.dumps(respuesta_banco)
+                    )
+                    
+                    db.add(pago_respuesta)
+
+                    estado_banco = respuesta_banco.get("NombreEstado", "").upper()
+                    nuevo_pago.estado = estado_banco
+
+                    if estado_banco == "ACEPTADA":
+                        pedido.estado = "PAGADO"
+
+                        for item in pedido.items:
+                            producto = item.producto
+                            producto.stock -= item.cantidad
+
+                        carrito = db.query(Carrito).filter(Carrito.id_cliente == pedido.id_cliente).first()
+                        if carrito:
+                            for item in carrito.items:
+                                db.delete(item)
+
+                        await SistemaServices.notificar_envio(pedido, pedido.direccion)
+                    
+                    elif estado_banco == "RECHAZADA":
+                        pedido.estado = "PAGO_FALLIDO"
+                    
+                    db.commit()
+                    
+                    return {
+                        "message": "Pago procesado",
+                        "estado_pago": nuevo_pago.estado,
+                        "estado_pedido": pedido.estado,
+                        "id_transaccion": respuesta_banco.get("IdTransaccion"),
+                        "mensaje_banco": respuesta_banco.get("Mensaje")
+                    }
+                else:
+                    raise HTTPException(status_code=500, detail="Error al comunicarse con el banco")
+        
+        except httpx.RequestError as e:
+            nuevo_pago.estado = "ERROR"
+            db.commit()
+            raise HTTPException(status_code=503, detail=f"No se pudo conectar con el banco: {str(e)}")
+    
+    @staticmethod
+    async def notificar_envio(pedido: Pedido, direccion: Direccion):
+        """Notifica al sistema de envíos sobre un nuevo pedido pagado"""
+        try:
+            payload = {
+                "id_pedido": pedido.id_pedido,
+                "id_cliente": pedido.id_cliente,
+                "direccion": {
+                    "calle": direccion.calle,
+                    "ciudad": direccion.ciudad,
+                    "estado": direccion.estado,
+                    "codigo_postal": direccion.codigo_postal,
+                    "referencias": direccion.referencias
+                },
+                "productos": [
+                    {
+                        "id_producto": item.id_producto,
+                        "nombre": item.producto.nombre,
+                        "cantidad": item.cantidad
+                    }
+                    for item in pedido.items
+                ],
+                "total": float(pedido.total)
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    ENVIOS_API_URL,
+                    json=payload,
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    print(f"Envío notificado correctamente para pedido {pedido.id_pedido}")
+                else:
+                    print(f"Error al notificar envío: {response.status_code}")
+        
+        except httpx.RequestError as e:
+            print(f"❌ No se pudo conectar con sistema de envíos: {str(e)}")
+    
+    @staticmethod
+    def actualizar_estado_envio(db: Session, id_pedido: int, nuevo_estado: str):
+        """Actualiza el estado de envío de un pedido (webhook de envíos)"""
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        estados_validos = ["EN_ENVIO", "EN_REPARTO", "ENTREGADO"]
+        if nuevo_estado not in estados_validos:
+            raise HTTPException(status_code=400, detail=f"Estado inválido. Debe ser uno de: {estados_validos}")
+        
+        pedido.estado = nuevo_estado
+        db.commit()
+        
+        return {
+            "message": "Estado de envío actualizado",
+            "id_pedido": id_pedido,
+            "nuevo_estado": nuevo_estado
+        }
