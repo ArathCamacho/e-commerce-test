@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from app.services.sistemaservices import SistemaServices
+from pydantic import BaseModel
+from typing import List
 
 from app.models.Cliente import ClienteRegistroSchema, ClienteLoginSchema, ClienteResponseSchema
 from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
@@ -124,3 +126,59 @@ async def actualizar_estado_envio(data: ActualizarEstadoEnvioSchema, db: Session
     Webhook para que el sistema de envíos actualice el estado de un pedido.
     """
     return SistemaServices.actualizar_estado_envio(db, data.id_pedido, data.nuevo_estado)
+
+@router.get("/catalogo")
+async def obtener_catalogo(db: Session = Depends(get_db)):
+    """
+    📋 Endpoint principal del catálogo
+    
+    Devuelve el catálogo completo con:
+    - Todas las categorías
+    - Productos por categoría
+    - Disponibilidad de cada producto
+    - Stock y precios actualizados
+    
+    Este endpoint es para que otros sistemas consulten el catálogo
+    """
+    return SistemaServices.obtener_catalogo_completo(db)
+
+
+@router.get("/catalogo/disponibilidad/{id_producto}")
+async def consultar_disponibilidad_producto(id_producto: int, db: Session = Depends(get_db)):
+    """
+    🔍 Consulta la disponibilidad de UN producto específico
+    
+    Devuelve:
+    - Stock actual
+    - Estado de disponibilidad
+    - Si se puede ordenar o no
+    """
+    return SistemaServices.consultar_disponibilidad(db, id_producto)
+
+
+@router.post("/catalogo/disponibilidad/multiple")
+async def consultar_disponibilidad_productos(
+    data: ConsultaDisponibilidadSchema, 
+    db: Session = Depends(get_db)
+):
+    """
+    🔍 Consulta la disponibilidad de MÚLTIPLES productos a la vez
+    
+    Body ejemplo:
+    {
+        "ids_productos": [1, 2, 3, 4, 5]
+    }
+    
+    Útil cuando otro sistema quiere verificar varios productos antes de hacer pedidos
+    """
+    return SistemaServices.consultar_disponibilidad_multiple(db, data.ids_productos)
+
+
+@router.get("/clientes", response_model=list[ClienteResponseSchema])
+async def obtener_todos_clientes(db: Session = Depends(get_db)):
+    """
+    👥 Obtiene todos los clientes registrados
+    
+    Para consultas administrativas o integración con otros sistemas
+    """
+    return SistemaServices.obtener_todos_clientes(db)

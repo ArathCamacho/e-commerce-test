@@ -520,3 +520,117 @@ class SistemaServices:
             "id_pedido": id_pedido,
             "nuevo_estado": nuevo_estado
         }
+    
+    @staticmethod
+    def obtener_catalogo_completo(db: Session):
+        """
+        Devuelve el catálogo completo con productos agrupados por categoría
+        y su disponibilidad para que otros sistemas lo consulten
+        """
+        categorias = db.query(Categoria).all()
+        
+        catalogo = {
+            "total_productos": 0,
+            "total_categorias": len(categorias),
+            "categorias": []
+        }
+        
+        for categoria in categorias:
+            productos = db.query(Producto).filter(
+                Producto.id_categoria == categoria.id_categoria,
+                Producto.activo == True
+            ).all()
+            
+            productos_lista = []
+            for producto in productos:
+                disponibilidad = "DISPONIBLE" if producto.stock > 0 else "AGOTADO"
+                
+                productos_lista.append({
+                    "id_producto": producto.id_producto,
+                    "nombre": producto.nombre,
+                    "descripcion": producto.descripcion,
+                    "precio": float(producto.precio),
+                    "stock": producto.stock,
+                    "disponibilidad": disponibilidad,
+                    "imagen_url": producto.imagen_url,
+                    "activo": producto.activo
+                })
+            
+            catalogo["categorias"].append({
+                "id_categoria": categoria.id_categoria,
+                "nombre_categoria": categoria.nombre,
+                "descripcion_categoria": categoria.descripcion,
+                "total_productos": len(productos_lista),
+                "productos": productos_lista
+            })
+            
+            catalogo["total_productos"] += len(productos_lista)
+        
+        return catalogo
+
+
+    @staticmethod
+    def consultar_disponibilidad(db: Session, id_producto: int):
+        """
+        Consulta la disponibilidad específica de un producto
+        Para que otros sistemas puedan verificar antes de hacer pedidos
+        """
+        producto = db.query(Producto).filter(Producto.id_producto == id_producto).first()
+        
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        disponibilidad = "DISPONIBLE" if producto.stock > 0 else "AGOTADO"
+        nivel_stock = "ALTO" if producto.stock > 20 else "BAJO" if producto.stock > 0 else "AGOTADO"
+        
+        return {
+            "id_producto": producto.id_producto,
+            "nombre": producto.nombre,
+            "stock_actual": producto.stock,
+            "disponibilidad": disponibilidad,
+            "nivel_stock": nivel_stock,
+            "precio": float(producto.precio),
+            "activo": producto.activo,
+            "puede_ordenar": producto.activo and producto.stock > 0
+        }
+
+
+    @staticmethod
+    def consultar_disponibilidad_multiple(db: Session, ids_productos: list[int]):
+        """
+        Consulta la disponibilidad de múltiples productos a la vez
+        Útil cuando otros sistemas quieren verificar varios productos
+        """
+        resultados = []
+        
+        for id_producto in ids_productos:
+            try:
+                disponibilidad = SistemaServices.consultar_disponibilidad(db, id_producto)
+                resultados.append(disponibilidad)
+            except HTTPException:
+                resultados.append({
+                    "id_producto": id_producto,
+                    "error": "Producto no encontrado"
+                })
+        
+        return {
+            "total_consultados": len(ids_productos),
+            "productos": resultados
+        }
+
+
+    @staticmethod
+    def obtener_todos_clientes(db: Session) -> list[ClienteResponseSchema]:
+        """
+        Obtiene todos los clientes registrados en el sistema
+        Para consultas administrativas o de otros sistemas
+        """
+        clientes = db.query(Cliente).all()
+        return [ClienteResponseSchema(
+            id_cliente=c.id_cliente,
+            nombre=c.nombre,
+            apellido=c.apellido,
+            correo=c.correo,
+            telefono=c.telefono,
+            fecha_registro=c.fecha_registro
+        ) for c in clientes]
