@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from app.services.sistemaservices import SistemaServices
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 from app.models.Cliente import ClienteRegistroSchema, ClienteLoginSchema, ClienteResponseSchema
 from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
