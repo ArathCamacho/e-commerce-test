@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class Producto(Base):
-    __tablename__ = "Producto"
+    __tablename__ = "producto"
     
     id_producto = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String(200), nullable=False)
