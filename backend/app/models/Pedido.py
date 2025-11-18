@@ -1,38 +1,40 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import relationship
 from database import Base
-from datetime import datetime
 from pydantic import BaseModel
+from datetime import datetime
 from typing import List, Optional
 
 class Pedido(Base):
-    __tablename__ = "Pedido"
+    __tablename__ = "pedido"
     
-    id_pedido = Column(Integer, primary_key=True, autoincrement=True)
-    id_cliente = Column(Integer, ForeignKey("Cliente.id_cliente"), nullable=False)
-    id_direccion = Column(Integer, ForeignKey("Direccion.id_direccion"), nullable=False)
-    total = Column(DECIMAL(10, 2), nullable=False)
-    estado = Column(String(30), default="PENDIENTE") 
+    id_pedido = Column(Integer, primary_key=True, index=True)
+    id_cliente = Column(Integer, ForeignKey("cliente.id_cliente"), nullable=False)
+    id_direccion = Column(Integer, ForeignKey("direccion.id_direccion"), nullable=False)
+    total = Column(Numeric(10, 2), nullable=False)
+    estado = Column(String(30), default="PENDIENTE")
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
     
+    # Relaciones
     cliente = relationship("Cliente", back_populates="pedidos")
-    direccion = relationship("Direccion")
+    direccion = relationship("Direccion", back_populates="pedidos")
     items = relationship("Pedido_Item", back_populates="pedido", cascade="all, delete-orphan")
     pagos = relationship("Pago", back_populates="pedido")
 
-
 class Pedido_Item(Base):
-    __tablename__ = "Pedido_Item"
+    __tablename__ = "pedido_item"
     
-    id_pedido_item = Column(Integer, primary_key=True, autoincrement=True)
-    id_pedido = Column(Integer, ForeignKey("Pedido.id_pedido"), nullable=False)
-    id_producto = Column(Integer, ForeignKey("Producto.id_producto"), nullable=False)
+    id_pedido_item = Column(Integer, primary_key=True, index=True)
+    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=False)
+    id_producto = Column(Integer, ForeignKey("producto.id_producto"), nullable=False)
     cantidad = Column(Integer, nullable=False)
-    precio_unitario = Column(DECIMAL(10, 2), nullable=False)
+    precio_unitario = Column(Numeric(10, 2), nullable=False)
     
+    # Relaciones
     pedido = relationship("Pedido", back_populates="items")
-    producto = relationship("Producto")
+    producto = relationship("Producto", back_populates="items_pedido")
 
+# Schemas de Pydantic
 class PedidoCreateSchema(BaseModel):
     id_cliente: int
     id_direccion: int
@@ -53,9 +55,6 @@ class PedidoResponseSchema(BaseModel):
     estado: str
     fecha_creacion: datetime
     items: List[PedidoItemResponseSchema]
-    
-    class Config:
-        from_attributes = True
 
 class PagoRequestSchema(BaseModel):
     numero_tarjeta_origen: str
