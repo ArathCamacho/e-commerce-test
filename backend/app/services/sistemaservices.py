@@ -21,43 +21,36 @@ ENVIOS_API_URL = "http://localhost:6000/api/envios/crear"
 TARJETA_DESTINO_COMERCIO = "0000 0009 8765 4321"  
 
 class SistemaServices:
-    
-    
+
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hashea la contraseña usando bcrypt"""
+        """Devuelve la contraseña tal cual, sin hash"""
         if not isinstance(password, str):
             password = str(password, "utf-8") if isinstance(password, bytes) else str(password)
-        
         password = password.strip()
-        
         if len(password) == 0:
             raise HTTPException(status_code=400, detail="La contraseña no puede estar vacía")
-        
-        if len(password.encode("utf-8")) > 72:
-            password = password[:72]
-        
-        return pwd_context.hash(password)
-    
+        return password  # ✅ sin hash
+
     @staticmethod
     def verificar_password(plain_password: str, hash_password: str) -> bool:
-        return pwd_context.verify(plain_password, hash_password)
-    
+        """Solo compara texto plano"""
+        return plain_password == hash_password
+
     @staticmethod
     def registrar_cliente(db: Session, data: ClienteRegistroSchema) -> ClienteResponseSchema:
-        """Registra un nuevo cliente"""
+        """Registra un nuevo cliente sin hash en la contraseña"""
         existing = db.query(Cliente).filter(Cliente.correo == data.correo).first()
         if existing:
             raise HTTPException(status_code=409, detail="Correo ya registrado")
         
-        hashed_password = SistemaServices.hash_password(data.contrasena)
-        
+        # ya no se hace hashing
         nuevo_cliente = Cliente(
             nombre=data.nombre,
             apellido=data.apellido,
             correo=data.correo,
             telefono=data.telefono,
-            contrasena=hashed_password
+            contrasena=data.contrasena  # texto plano
         )
         
         db.add(nuevo_cliente)
@@ -72,18 +65,13 @@ class SistemaServices:
             telefono=nuevo_cliente.telefono,
             fecha_registro=nuevo_cliente.fecha_registro
         )
-    
+
     @staticmethod
     def login_cliente(db: Session, correo: str, contrasena: str) -> ClienteResponseSchema:
-        """Login de cliente"""
+        """Login comparando texto plano"""
         cliente = db.query(Cliente).filter(Cliente.correo == correo).first()
         
-        if not cliente:
-            raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
-        
-        password_valida = SistemaServices.verificar_password(contrasena, cliente.contrasena)
-        
-        if not password_valida:
+        if not cliente or cliente.contrasena != contrasena:
             raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
         
         return ClienteResponseSchema(
@@ -94,6 +82,7 @@ class SistemaServices:
             telefono=cliente.telefono,
             fecha_registro=cliente.fecha_registro
         )
+
     
     @staticmethod
     def crear_direccion(db: Session, id_cliente: int, data: DireccionCreateSchema) -> DireccionResponseSchema:
