@@ -7,8 +7,8 @@ from typing import List, Optional
 
 from app.models.Cliente import ClienteRegistroSchema, ClienteLoginSchema, ClienteResponseSchema
 from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
-from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema
-from app.models.Categoria import CategoriaResponseSchema
+from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema, SolicitudCatalogoSchema
+from app.models.Categoria import CategoriaResponseSchema, Categoria
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
 from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
 
