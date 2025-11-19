@@ -37,5 +37,5 @@ class DireccionCreateSchema(BaseModel):
     ciudad: str
     estado: str
     codigo_postal: str
-    #referencias: Optional[str] = None
+    referencias: Optional[str] = None
     #ggg
