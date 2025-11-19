@@ -17,7 +17,7 @@ class Pago(Base):
     """
     __tablename__ = "pago"
     
-    id_pago = Column(Integer, primary_key=True, index=True)
+    id_pago = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
     
     # Lo que enviaste
