@@ -135,24 +135,58 @@ async def actualizar_estado_envio(data: ActualizarEstadoEnvioSchema, db: Session
     return SistemaServices.actualizar_estado_envio(db, data.id_pedido, data.nuevo_estado)
 
 @router.get("/catalogo")
-async def obtener_catalogo(db: Session = Depends(get_db)):
+async def obtener_catalogo(
+    store_id: int = 1,
+    category: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
     """
-    🛒 CATÁLOGO COMPLETO - ENDPOINT PRINCIPAL
+    🛒 ENDPOINT PRINCIPAL DEL CATÁLOGO PARA API DISTRIBUIDA
     
-    Devuelve TODOS los productos disponibles con:
-    - ID, nombre, descripción
-    - Precio
-    - Stock disponible
-    - Estado de disponibilidad (DISPONIBLE, ULTIMAS_UNIDADES, AGOTADO)
-    - Categoría
-    - Si se puede ordenar o no
+    Este es el endpoint que otros equipos consultarán.
     
-    📌 Este es el endpoint que otros equipos deben usar para consultar tu catálogo
+    Parámetros (Query Params):
+    - store_id: ID de tu tienda (default: 1)
+    - category: ID de categoría (opcional)
     
-    Ejemplo de uso:
-    GET /api/catalogo
+    Ejemplos:
+    
+    1. Obtener TODO el catálogo de la tienda 1:
+       GET /api/catalogo?store_id=1
+    
+    2. Obtener solo productos de categoría 2 (Ropa):
+       GET /api/catalogo?store_id=1&category=2
+    
+    3. Sin parámetros (usa store_id=1 por defecto):
+       GET /api/catalogo
+    
+    Respuesta (Array de productos):
+    [
+        {
+            "store_id": 1,
+            "id": 8,
+            "nombre": "Playera Básica Negra",
+            "description": "Playera de algodón 100%",
+            "precio": 199.99,
+            "talla": "M",
+            "color": "Negro",
+            "stock": 100,
+            "duracion_minutos": null
+        },
+        {
+            "store_id": 1,
+            "id": 1,
+            "nombre": "Laptop HP",
+            "description": "Laptop gaming",
+            "precio": 12999.99,
+            "talla": null,
+            "color": null,
+            "stock": 15,
+            "duracion_minutos": null
+        }
+    ]
     """
-    return SistemaServices.obtener_catalogo_completo(db)
+    return SistemaServices.obtener_catalogo_completo(db, store_id, category)
 
 
 @router.get("/catalogo/por-categoria")
@@ -297,25 +331,45 @@ async def listar_categorias_api(db: Session = Depends(get_db)):
     
     Para que otros equipos sepan qué IDs de categoría pueden consultar
     
+    Ejemplo:
+    GET /api/categorias/lista
+    
     Respuesta:
-    {
-        "total_categorias": 5,
-        "categorias": [
-            {"id_categoria": 1, "nombre": "Electrónica"},
-            {"id_categoria": 2, "nombre": "Ropa"},
-            ...
-        ]
-    }
+    [
+        {"id": 1, "nombre": "Electrónica"},
+        {"id": 2, "nombre": "Ropa"},
+        {"id": 3, "nombre": "Hogar"}
+    ]
     """
     categorias = db.query(Categoria).all()
-    return {
-        "total_categorias": len(categorias),
-        "categorias": [
-            {
-                "id_categoria": c.id_categoria,
-                "nombre": c.nombre,
-                "descripcion": c.descripcion
-            }
-            for c in categorias
-        ]
+    return [
+        {
+            "id": c.id_categoria,
+            "nombre": c.nombre
+        }
+        for c in categorias
+    ]
+
+@router.post("/catalogo")
+async def obtener_catalogo_post(
+    solicitud: SolicitudCatalogoSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    🛒 ENDPOINT DEL CATÁLOGO (Método POST)
+    
+    Alternativa si otros equipos prefieren enviar los datos por POST
+    
+    Body:
+    {
+        "store_id": 1,
+        "category": 2
     }
+    
+    Respuesta igual que el GET (array de productos)
+    """
+    return SistemaServices.obtener_catalogo_completo(
+        db, 
+        solicitud.store_id, 
+        solicitud.category
+    )

@@ -521,53 +521,7 @@ class SistemaServices:
             "nuevo_estado": nuevo_estado
         }
     
-    @staticmethod
-    def obtener_catalogo_completo(db: Session):
-        """
-        Devuelve el catálogo completo con productos agrupados por categoría
-        y su disponibilidad para que otros sistemas lo consulten
-        """
-        categorias = db.query(Categoria).all()
-        
-        catalogo = {
-            "total_productos": 0,
-            "total_categorias": len(categorias),
-            "categorias": []
-        }
-        
-        for categoria in categorias:
-            productos = db.query(Producto).filter(
-                Producto.id_categoria == categoria.id_categoria,
-                Producto.activo == True
-            ).all()
-            
-            productos_lista = []
-            for producto in productos:
-                disponibilidad = "DISPONIBLE" if producto.stock > 0 else "AGOTADO"
-                
-                productos_lista.append({
-                    "id_producto": producto.id_producto,
-                    "nombre": producto.nombre,
-                    "descripcion": producto.descripcion,
-                    "precio": float(producto.precio),
-                    "stock": producto.stock,
-                    "disponibilidad": disponibilidad,
-                    "imagen_url": producto.imagen_url,
-                    "activo": producto.activo
-                })
-            
-            catalogo["categorias"].append({
-                "id_categoria": categoria.id_categoria,
-                "nombre_categoria": categoria.nombre,
-                "descripcion_categoria": categoria.descripcion,
-                "total_productos": len(productos_lista),
-                "productos": productos_lista
-            })
-            
-            catalogo["total_productos"] += len(productos_lista)
-        
-        return catalogo
-
+    
 
     @staticmethod
     def consultar_disponibilidad(db: Session, id_producto: int):
@@ -636,61 +590,55 @@ class SistemaServices:
         ) for c in clientes]
     
     @staticmethod
-    def obtener_catalogo_completo(db: Session):
+    def obtener_catalogo_completo(db: Session, store_id: int = 1, category: int = None):
         """
-        🛒 ENDPOINT PRINCIPAL DEL CATÁLOGO
+        🛒 CATÁLOGO PARA API DISTRIBUIDA
         
-        Devuelve TODOS los productos disponibles con:
-        - Información completa del producto
-        - Stock actual
-        - Disponibilidad
-        - Categoría
-        - Precio
+        Recibe:
+        - store_id: ID de tu tienda
+        - category: ID de categoría (opcional)
         
-        Este es el endpoint que otros equipos consultarán para ver tu catálogo
-        """
-        productos = db.query(Producto).filter(Producto.activo == True).all()
-        
-        catalogo = {
-            "total_productos": len(productos),
-            "fecha_consulta": datetime.now().isoformat(),
-            "productos": []
+        Devuelve productos en formato:
+        {
+            "store_id": 1,
+            "id": 5,
+            "nombre": "Producto",
+            "description": "...",
+            "precio": 299.99,
+            "talla": "M",
+            "color": "Rojo",
+            "stock": 10,
+            "duracion_minutos": null
         }
+        """
+        # Query base: productos activos de esta tienda
+        query = db.query(Producto).filter(
+            Producto.activo == True,
+            Producto.store_id == store_id
+        )
         
-        for producto in productos:
-            # Determinar disponibilidad
-            if producto.stock == 0:
-                disponibilidad = "AGOTADO"
-                puede_ordenar = False
-            elif producto.stock <= 5:
-                disponibilidad = "ULTIMAS_UNIDADES"
-                puede_ordenar = True
-            else:
-                disponibilidad = "DISPONIBLE"
-                puede_ordenar = True
-            
-            # Obtener categoría
-            categoria = db.query(Categoria).filter(
-                Categoria.id_categoria == producto.id_categoria
-            ).first()
-            
-            catalogo["productos"].append({
-                "id_producto": producto.id_producto,
-                "nombre": producto.nombre,
-                "descripcion": producto.descripcion,
-                "precio": float(producto.precio),
-                "stock_disponible": producto.stock,
-                "disponibilidad": disponibilidad,
-                "puede_ordenar": puede_ordenar,
-                "categoria": {
-                    "id_categoria": categoria.id_categoria,
-                    "nombre": categoria.nombre
-                } if categoria else None,
-                "imagen_url": producto.imagen_url,
-                "activo": producto.activo
+        # Si enviaron categoría específica, filtrar por ella
+        if category is not None:
+            query = query.filter(Producto.id_categoria == category)
+        
+        productos = query.all()
+        
+        # Formatear respuesta según el formato que esperan otros equipos
+        catalogo_productos = []
+        for p in productos:
+            catalogo_productos.append({
+                "store_id": p.store_id,
+                "id": p.id_producto,
+                "nombre": p.nombre,
+                "description": p.descripcion,
+                "precio": float(p.precio),
+                "talla": p.talla,
+                "color": p.color,
+                "stock": p.stock,
+                "duracion_minutos": p.duracion_minutos
             })
         
-        return catalogo
+        return catalogo_productos
 
 
     @staticmethod
