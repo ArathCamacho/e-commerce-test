@@ -844,3 +844,46 @@ class SistemaServices:
             "total_productos": len(catalogo),
             "productos": catalogo
         }
+
+    @staticmethod
+    def verificar_disponibilidad_producto(db: Session, store_id: int, id_producto: int, cantidad_solicitada: int):
+        """Verifica si hay stock suficiente para surtir un pedido"""
+        
+        # 1. Validar que la cantidad sea positiva
+        if cantidad_solicitada <= 0:
+            raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a 0")
+        
+        # 2. Buscar el producto en la base de datos
+        producto = db.query(Producto).filter(
+            Producto.id_producto == id_producto,
+            Producto.store_id == store_id
+        ).first()
+        
+        # 3. Si no existe el producto, error
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        # 4. Si el producto está inactivo, error
+        if not producto.activo:
+            raise HTTPException(status_code=400, detail="Producto no disponible")
+        
+        # 5. Comparar stock disponible vs cantidad solicitada
+        puede_surtir = producto.stock >= cantidad_solicitada
+        
+        # 6. Crear el mensaje apropiado
+        if puede_surtir:
+            mensaje = "Stock suficiente para surtir pedido"
+        else:
+            mensaje = f"Stock insuficiente. Disponible: {producto.stock} unidades"
+        
+        # 7. Devolver la respuesta
+        return {
+            "disponible": puede_surtir,
+            "store_id": store_id,
+            "id_producto": producto.id_producto,
+            "nombre_producto": producto.nombre,
+            "cantidad_solicitada": cantidad_solicitada,
+            "stock_disponible": producto.stock,
+            "puede_surtir": puede_surtir,
+            "mensaje": mensaje
+        }
