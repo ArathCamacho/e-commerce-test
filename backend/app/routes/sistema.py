@@ -22,7 +22,50 @@ class ActualizarEstadoEnvioSchema(BaseModel):
     id_pedido: int
     nuevo_estado: str
 
-
+class VerificarDisponibilidadSchema(BaseModel):
+    """Schema para verificar si hay stock suficiente"""
+    store_id: int
+    id_producto: int
+    cantidad_solicitada: int
+    
+@router.post("/productos/verificar-disponibilidad")
+async def verificar_disponibilidad(
+    data: VerificarDisponibilidadSchema, 
+    db: Session = Depends(get_db)
+):
+    """
+    🔍 VERIFICAR DISPONIBILIDAD DE PRODUCTO
+    
+    Revisa si una tienda tiene stock suficiente para surtir cierta cantidad.
+    
+    Ejemplo de uso:
+    POST /api/productos/verificar-disponibilidad
+    Body:
+    {
+        "store_id": 1,
+        "id_producto": 8,
+        "cantidad_solicitada": 5
+    }
+    
+    Respuesta:
+    {
+        "disponible": true,
+        "store_id": 1,
+        "id_producto": 8,
+        "nombre_producto": "Playera Básica Negra",
+        "cantidad_solicitada": 5,
+        "stock_disponible": 100,
+        "puede_surtir": true,
+        "mensaje": "Stock suficiente para surtir pedido"
+    }
+    """
+    return SistemaServices.verificar_disponibilidad_producto(
+        db,
+        data.store_id,
+        data.id_producto,
+        data.cantidad_solicitada
+    )
+   
 @router.post("/clientes/registro", response_model=ClienteResponseSchema)
 async def registrar_cliente(data: ClienteRegistroSchema, db: Session = Depends(get_db)):
     """Registra un nuevo cliente"""
