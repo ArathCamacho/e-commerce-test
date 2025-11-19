@@ -1,90 +1,108 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Numeric, Text
 from sqlalchemy.orm import relationship
 from database import Base
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
+# ============================================
+# MODELO DE BASE DE DATOS (SQLAlchemy)
+# ============================================
+
 class Pago(Base):
+    """
+    💳 TABLA DE PAGOS
+    
+    Guarda cada transacción con el banco
+    """
     __tablename__ = "pago"
     
     id_pago = Column(Integer, primary_key=True, index=True)
-    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=False)
-    estado = Column(String(20), nullable=False)
-    monto = Column(Numeric(10, 2), nullable=False)
-    moneda = Column(String(10), default="MXN")
-    fecha = Column(DateTime, default=datetime.utcnow)
-    metodo = Column(String(20), default="TARJETA")
+    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
     
-    # Relaciones
-    pedido = relationship("Pedido", back_populates="pagos")
-    solicitudes = relationship("Pago_Solicitud", back_populates="pago")
-    respuestas = relationship("Pago_Respuesta", back_populates="pago")
-
-class Pago_Solicitud(Base):
-    __tablename__ = "pago_solicitud"
-    
-    id_solicitud = Column(Integer, primary_key=True, index=True)
-    id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False)
+    # Lo que enviaste
     numero_tarjeta_origen = Column(String(25), nullable=False)
-    numero_tarjeta_destino = Column(String(25), nullable=False)
     nombre_cliente = Column(String(150), nullable=False)
-    mes_exp = Column(Integer, nullable=False)
-    anio_exp = Column(Integer, nullable=False)
-    cvv = Column(String(10), nullable=False)
     monto = Column(Numeric(10, 2), nullable=False)
     moneda = Column(String(10), default="MXN")
-    tipo = Column(String(20), default="TRANSFERENCIA")
-    creada_utc = Column(DateTime, default=datetime.utcnow)
-    request_json = Column(Text)
     
-    # Relaciones
-    pago = relationship("Pago", back_populates="solicitudes")
+    # Lo que recibiste del banco
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, APROBADO, RECHAZADO, ERROR
+    creada_utc = Column(DateTime, nullable=True)
+    id_transaccion = Column(String(100), nullable=True)
+    tipo = Column(String(50), nullable=True)
+    numero_tarjeta = Column(String(25), nullable=True)
+    id_estado_transaccion = Column(Integer, nullable=True)
+    firma = Column(String(100), nullable=True)
+    
+    # Metadata
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    request_json = Column(Text, nullable=True)  # Lo que enviaste (auditoría)
+    response_json = Column(Text, nullable=True)  # Lo que recibiste (auditoría)
+    
+    # Relación
+    pedido = relationship("Pedido", back_populates="pagos")
 
-class Pago_Respuesta(Base):
-    __tablename__ = "pago_respuesta"
-    
-    id_respuesta = Column(Integer, primary_key=True, index=True)
-    id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False)
-    nombre_comercio = Column(String(200))
-    creada_utc = Column(DateTime)
-    id_transaccion = Column(String(100))
-    tipo_transaccion = Column(String(50))
-    monto_transaccion = Column(Numeric(10, 2))
-    moneda = Column(String(10))
-    marca_tarjeta = Column(String(50))
-    numero_tarjeta = Column(String(25))
-    numero_autorizacion = Column(String(100))
-    nombre_estado = Column(String(50))
-    firma = Column(String(50))
-    mensaje = Column(String(200))
-    response_json = Column(Text)
-    fecha_registro = Column(DateTime, default=datetime.utcnow)
-    
-    # Relaciones
-    pago = relationship("Pago", back_populates="respuestas")
 
-# Schemas de Pydantic
+# ============================================
+# SCHEMAS DE PYDANTIC
+# ============================================
+
+class PagoIniciarSchema(BaseModel):
+    """Lo que recibes del frontend"""
+    numero_tarjeta_origen: str
+    nombre_cliente: str
+    mes_exp: int
+    anio_exp: int
+    cvv: str
+    monto: float
+    moneda: str = "MXN"
+    id_pedido: Optional[int] = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "numero_tarjeta_origen": "1234 5678 9012 3456",
+                "nombre_cliente": "Juan Perez",
+                "mes_exp": 12,
+                "anio_exp": 2027,
+                "cvv": "123",
+                "monto": 1250.50,
+                "moneda": "MXN"
+            }
+        }
+
+
 class BancoSolicitudSchema(BaseModel):
-    NumeroTarjetaOrigen: str
-    NumeroTarjetaDestino: str
-    NombreCliente: str
-    MesExp: int
-    AnioExp: int
-    Cvv: str
-    Monto: float
-    Moneda: str
+    """Lo que envías al banco"""
+    numero_tarjeta_origen: str
+    numero_tarjeta_destino: str
+    nombre_cliente: str
+    mes_exp: int
+    anio_exp: int
+    cvv: str
+    monto: float
+    moneda: str
+
 
 class BancoRespuestaSchema(BaseModel):
-    NombreComercio: Optional[str] = None
-    CreadaUTC: Optional[str] = None
-    IdTransaccion: Optional[str] = None
-    TipoTransaccion: Optional[str] = None
-    MontoTransaccion: Optional[float] = None
-    Moneda: Optional[str] = None
-    MarcaTarjeta: Optional[str] = None
-    NumeroTarjeta: Optional[str] = None
-    NumeroAutorizacion: Optional[str] = None
-    NombreEstado: Optional[str] = None
-    Firma: Optional[str] = None
-    Mensaje: Optional[str] = None
+    """Lo que el banco te devuelve"""
+    creada_utc: Optional[str] = None
+    id_transaccion: Optional[str] = None
+    tipo: Optional[str] = None
+    monto: Optional[float] = None
+    numero_tarjeta: Optional[str] = None
+    id_estado_transaccion: Optional[int] = None
+    firma: Optional[str] = None
+
+
+class PagoResponseSchema(BaseModel):
+    """Lo que devuelves al frontend"""
+    id_pago: int
+    estado: str
+    monto: float
+    id_transaccion: Optional[str] = None
+    firma: Optional[str] = None
+    
+    class Config:
+        from_attributes = True

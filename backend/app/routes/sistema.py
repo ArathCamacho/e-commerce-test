@@ -11,6 +11,8 @@ from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, Prod
 from app.models.Categoria import CategoriaResponseSchema, Categoria
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
 from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
+from app.services.pagoservices import PagoServices
+from app.models.Pago import PagoIniciarSchema, PagoResponseSchema
 
 router = APIRouter()
 
@@ -129,3 +131,24 @@ async def obtener_catalogo_post(
         solicitud.store_id, 
         solicitud.category
     )
+@router.post("/pagos/procesar", response_model=PagoResponseSchema)
+async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db)):
+    """
+    💳 Procesar pago con banco
+    
+    Body: {
+        "numero_tarjeta_origen": "1234 5678 9012 3456",
+        "nombre_cliente": "Juan Perez",
+        "mes_exp": 12,
+        "anio_exp": 2027,
+        "cvv": "123",
+        "monto": 1250.50
+    }
+    """
+    return await PagoServices.procesar_pago(db, datos)
+
+
+@router.get("/pagos/{id_pago}", response_model=PagoResponseSchema)
+async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
+    """🔍 Consultar estado de un pago"""
+    return PagoServices.consultar_pago(db, id_pago)
