@@ -12,7 +12,8 @@ from app.models.Categoria import Categoria, CategoriaResponseSchema
 from app.models.Producto import Producto, ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema
 from app.models.Carrito import Carrito, Carrito_Item, CarritoAgregarSchema, CarritoResponseSchema, CarritoItemResponseSchema
 from app.models.Pedido import Pedido, Pedido_Item, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
-from app.models.Pago import Pago, Pago_Solicitud, Pago_Respuesta, BancoSolicitudSchema, BancoRespuestaSchema
+from app.models.Pago import Pago, PagoIniciarSchema, BancoSolicitudSchema, BancoRespuestaSchema, PagoResponseSchema
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.models.Pago import Pago, PagoIniciarSchema, BancoSolicitudSchema, BancoRespuestaSchema, PagoResponseSchema
 
+
 BANCO_API_URL = "http://localhost:5000/api/transacciones"  # 🔴 CAMBIAR
 TARJETA_COMERCIO = "0000 0009 8765 4321"  # 🔴 CAMBIAR
 
