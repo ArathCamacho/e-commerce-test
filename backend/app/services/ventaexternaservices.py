@@ -113,7 +113,7 @@ class VentaExternaServices:
                     apellido="Externo",
                     correo="ventas.externas@sistema.com",
                     telefono="0000000000",
-                    contrasena_hash="N/A"
+                    contrasena="N/A"
                 )
                 db.add(cliente_externo)
                 db.commit()
