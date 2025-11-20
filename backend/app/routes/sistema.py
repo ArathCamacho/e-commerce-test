@@ -192,3 +192,51 @@ async def consultar_envio_por_pedido(id_pedido: int, db: Session = Depends(get_d
     Ejemplo: GET /api/envios/pedido/15
     """
     return EnvioServices.consultar_envio_por_pedido(db, id_pedido)
+@router.get("/catalogo/all")
+async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
+    """
+    🛒 CATÁLOGO COMPLETO SIN FILTROS
+    
+    Devuelve TODOS los productos activos sin necesidad de parámetros.
+    
+    Ejemplo de uso:
+    GET /api/catalogo/all
+    
+    Respuesta (Array de todos los productos):
+    [
+        {
+            "store_id": 1,
+            "id": 8,
+            "nombre": "Playera Básica Negra",
+            "description": "Playera de algodón 100%",
+            "precio": 199.99,
+            "talla": "M",
+            "color": "Negro",
+            "stock": 100,
+            "duracion_minutos": null
+        },
+        {
+            "store_id": 1,
+            "id": 1,
+            "nombre": "Laptop HP",
+            "description": "Laptop gaming",
+            "precio": 12999.99,
+            "talla": null,
+            "color": null,
+            "stock": 15,
+            "duracion_minutos": null
+        },
+        {
+            "store_id": 2,
+            "id": 25,
+            "nombre": "Producto de otra tienda",
+            "description": "...",
+            "precio": 599.99,
+            "talla": "L",
+            "color": "Azul",
+            "stock": 50,
+            "duracion_minutos": null
+        }
+    ]
+    """
+    return SistemaServices.obtener_catalogo_completo_sin_filtros(db)
