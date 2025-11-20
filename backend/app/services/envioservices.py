@@ -139,7 +139,9 @@ class EnvioServices:
             else:
                 # Error de la API de envíos
                 envio.estado_actual = "ERROR"
-                envio.response_json = f"Error {response.status_code}: {response.text}"
+                error_detail = f"HTTP {response.status_code}: {response.text}"
+                envio.response_json = error_detail
+                print(f"❌ ERROR EN API DE ENVÍOS: {error_detail}")  # Debug
             
             db.commit()
             db.refresh(envio)
