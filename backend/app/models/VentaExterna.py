@@ -75,7 +75,7 @@ class VentaExternaRegistroSchema(BaseModel):
                 "quantity": 2,
                 "size": "M",
                 "color": "Negro",
-                "options": null,
+                "options": None,  
                 "created_at": "2025-11-20T10:30:00",
                 "payment_status": "PAID"
             }
