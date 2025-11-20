@@ -15,7 +15,7 @@ class Pedido(Base):
     id_pedido = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_cliente = Column(Integer, ForeignKey("cliente.id_cliente"), nullable=False)
     id_direccion = Column(Integer, ForeignKey("direccion.id_direccion"), nullable=False)
-    fecha_pedido = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
     total = Column(Numeric(10, 2), nullable=False)
     estado = Column(String(50), default="PENDIENTE")
     
@@ -70,7 +70,7 @@ class PedidoResponseSchema(BaseModel):
     id_pedido: int
     id_cliente: int
     id_direccion: int
-    fecha_pedido: datetime
+    fecha_creacion: datetime
     total: float
     estado: str
     items: List[PedidoItemResponseSchema]
