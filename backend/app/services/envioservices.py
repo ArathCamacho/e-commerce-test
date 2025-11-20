@@ -54,12 +54,13 @@ class EnvioServices:
         datos_cliente = DatosClienteEnvioSchema(
             nombre=f"{cliente.nombre} {cliente.apellido}",
             telefono=cliente.telefono or "Sin teléfono",
-            email=cliente.email,
+            email=cliente.correo,
             direccion_completa=direccion.calle,
             ciudad=direccion.ciudad,
             estado=direccion.estado,
             codigo_postal=direccion.codigo_postal
         )
+
         
         # 5. Preparar lista de productos
         productos = []
