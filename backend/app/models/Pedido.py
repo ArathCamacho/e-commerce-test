@@ -30,7 +30,7 @@ class Pedido(Base):
 class Pedido_Item(Base):
     __tablename__ = "pedido_item"
     
-    id_item = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_pedido_item = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=False)
     id_producto = Column(Integer, ForeignKey("producto.id_producto"), nullable=False)
     cantidad = Column(Integer, nullable=False)
@@ -39,6 +39,7 @@ class Pedido_Item(Base):
     # Relaciones
     pedido = relationship("Pedido", back_populates="items")
     producto = relationship("Producto", back_populates="items_pedido")
+
 
 
 # ============================================
@@ -51,13 +52,14 @@ class PedidoItemCreateSchema(BaseModel):
 
 
 class PedidoItemResponseSchema(BaseModel):
-    id_item: int
+    id_pedido_item: int
     id_producto: int
     cantidad: int
     precio_unitario: float
     
     class Config:
         from_attributes = True
+
 
 
 class PedidoCreateSchema(BaseModel):
