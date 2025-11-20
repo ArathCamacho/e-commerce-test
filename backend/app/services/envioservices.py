@@ -27,30 +27,40 @@ class EnvioServices:
         """
         📦 CREAR SOLICITUD DE ENVÍO
         
-        1. Busca el pedido en la BD
-        2. Obtiene datos del cliente y productos
-        3. Envía solicitud a la API de envíos
-        4. Guarda la respuesta
+        Flujo:
+        1. Buscar pedido (id_pedido) en BD
+        2. Validar que tenga cliente y dirección
+        3. Construir JSON de solicitud (SOL_ENV)
+        4. Enviar a API externa
+        5. Guardar respuesta (EDO_ENV)
         """
         
-        # 1. Buscar el pedido con sus relaciones
+        # 1. Buscar el pedido con sus relaciones (items + productos)
         pedido = db.query(Pedido).filter(Pedido.id_pedido == datos.id_pedido).first()
         if not pedido:
-            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+            raise HTTPException(status_code=404, detail=f"Pedido {datos.id_pedido} no encontrado")
         
-        # 2. Obtener cliente y dirección
+        # 2. Obtener cliente
         cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
         if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Cliente {pedido.id_cliente} no encontrado para pedido {datos.id_pedido}"
+            )
         
+        # 3. Obtener dirección
         direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
         if not direccion:
-            raise HTTPException(status_code=404, detail="Dirección no encontrada")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Dirección {pedido.id_direccion} no encontrada para pedido {datos.id_pedido}"
+            )
         
-        # 3. Generar ID único para la orden
+        # 4. Generar ID único para la orden externa
+        # Formato: ECM-YYYY-00001
         id_orden_externa = f"ECM-{datetime.now().year}-{pedido.id_pedido:05d}"
         
-        # 4. Preparar datos del cliente
+        # 5. Preparar datos del cliente (SOL_ENV.datos_cliente)
         datos_cliente = DatosClienteEnvioSchema(
             nombre=f"{cliente.nombre} {cliente.apellido}",
             telefono=cliente.telefono or "Sin teléfono",
@@ -60,23 +70,24 @@ class EnvioServices:
             estado=direccion.estado,
             codigo_postal=direccion.codigo_postal
         )
-
         
-        # 5. Preparar lista de productos
+        # 6. Preparar lista de productos (SOL_ENV.productos)
+        # IMPORTANTE: Asume que Pedido tiene relación `items` con PedidoItem
+        # y que PedidoItem tiene relación `producto` con Producto
         productos = []
         for item in pedido.items:
             productos.append(ProductoEnvioSchema(
-                id_producto=item.id_producto,
-                nombre=item.producto.nombre,
-                cantidad=item.cantidad,
-                precio=float(item.precio_unitario)
+                id_producto=item.id_producto,         # ID del producto
+                nombre=item.producto.nombre,          # Nombre del producto (desde relación)
+                cantidad=item.cantidad,               # Cantidad comprada
+                precio=float(item.precio_unitario)    # Precio unitario
             ))
         
-        # 6. Crear registro de envío en estado PENDIENTE
+        # 7. Crear registro de envío en estado PENDIENTE (antes de enviar)
         envio = Envio(
             id_pedido=pedido.id_pedido,
             id_orden_externa=id_orden_externa,
-            id_orden_original=pedido.id_pedido,
+            id_orden_original=pedido.id_pedido,  # ✅ CORREGIDO: Solo una vez aquí
             servicio_origen="ecommerce",
             estado_actual="PENDIENTE"
         )
@@ -85,7 +96,7 @@ class EnvioServices:
         db.refresh(envio)
         
         try:
-            # 7. Preparar solicitud completa
+            # 8. Construir solicitud completa (SOL_ENV)
             solicitud = EnvioSolicitudSchema(
                 id_orden_externa=id_orden_externa,
                 id_orden_original=pedido.id_pedido,
@@ -94,34 +105,41 @@ class EnvioServices:
                 productos=productos
             )
             
-            # Guardar lo que enviaste (auditoría)
+            # Guardar JSON de solicitud (auditoría)
             envio.request_json = solicitud.model_dump_json()
+            db.commit()
             
-            # 8. Enviar a la API de envíos
+            # 9. Enviar solicitud a la API de envíos (POST)
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     ENVIOS_API_URL,
                     json=solicitud.model_dump()
                 )
             
-            # 9. Procesar respuesta
-            if response.status_code == 200 or response.status_code == 201:
+            # 10. Procesar respuesta (EDO_ENV)
+            if response.status_code in [200, 201]:
                 respuesta = response.json()
+                
+                # Validar que la respuesta tenga los campos esperados
                 envio_resp = EnvioRespuestaSchema(**respuesta)
                 
-                # Guardar datos de la respuesta
+                # Actualizar registro de envío con datos recibidos
                 envio.codigo_seguimiento = envio_resp.codigo_seguimiento
                 envio.estado_actual = envio_resp.estado_actual
                 envio.ubicacion_actual = envio_resp.ubicacion_actual
+                
+                # Convertir fecha (remover 'Z' si viene en formato ISO)
                 envio.fecha_actualizacion = datetime.fromisoformat(
-                    envio_resp.fecha_actualizacion.replace('Z', '')
+                    envio_resp.fecha_actualizacion.replace('Z', '+00:00')
                 )
+                
+                # Guardar JSON completo de respuesta (auditoría)
                 envio.response_json = json.dumps(respuesta)
                 
             else:
-                # Error en la API de envíos
+                # Error de la API de envíos
                 envio.estado_actual = "ERROR"
-                envio.response_json = response.text
+                envio.response_json = f"Error {response.status_code}: {response.text}"
             
             db.commit()
             db.refresh(envio)
@@ -129,14 +147,19 @@ class EnvioServices:
             return EnvioResponseSchema.model_validate(envio)
             
         except Exception as e:
+            # Error inesperado (timeout, conexión, etc.)
             envio.estado_actual = "ERROR"
+            envio.response_json = f"Excepción: {str(e)}"
             db.commit()
-            raise HTTPException(status_code=500, detail=f"Error al crear envío: {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error al crear envío: {str(e)}"
+            )
     
     
     @staticmethod
     def consultar_envio(db: Session, id_envio: int):
-        """🔍 Consultar estado de un envío"""
+        """🔍 Consultar estado de un envío por ID"""
         envio = db.query(Envio).filter(Envio.id_envio == id_envio).first()
         if not envio:
             raise HTTPException(status_code=404, detail="Envío no encontrado")
@@ -148,5 +171,8 @@ class EnvioServices:
         """🔍 Consultar envío de un pedido específico"""
         envio = db.query(Envio).filter(Envio.id_pedido == id_pedido).first()
         if not envio:
-            raise HTTPException(status_code=404, detail="Envío no encontrado para este pedido")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No hay envío registrado para el pedido {id_pedido}"
+            )
         return EnvioResponseSchema.model_validate(envio)
