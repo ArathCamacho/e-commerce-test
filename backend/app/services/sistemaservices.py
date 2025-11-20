@@ -1,150 +1,144 @@
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from passlib.context import CryptContext
 import httpx
 import json
 from datetime import datetime
-from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from decimal import Decimal
 
-from app.models.Envio import (
-    Envio, 
-    EnvioIniciarSchema, 
-    EnvioSolicitudSchema, 
-    EnvioRespuestaSchema, 
-    EnvioResponseSchema,
-    ProductoEnvioSchema,
-    DatosClienteEnvioSchema
-)
-from app.models.Pedido import Pedido
-from app.models.Cliente import Cliente
-from app.models.Direccion import Direccion
+from app.models.Cliente import Cliente, ClienteRegistroSchema, ClienteResponseSchema
+from app.models.Direccion import Direccion, DireccionCreateSchema, DireccionResponseSchema
+from app.models.Categoria import Categoria, CategoriaResponseSchema
+from app.models.Producto import Producto, ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema
+from app.models.Carrito import Carrito, Carrito_Item, CarritoAgregarSchema, CarritoResponseSchema, CarritoItemResponseSchema
+from app.models.Pedido import Pedido, Pedido_Item, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
+from app.models.Pago import Pago, PagoIniciarSchema, BancoSolicitudSchema, BancoRespuestaSchema, PagoResponseSchema
 
-ENVIOS_API_URL = "http://localhost:6000/api/envios/crear"  # 🔴 CAMBIAR según la URL del otro equipo
 
-class EnvioServices:
-    
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+BANCO_API_URL = "http://localhost:5000/api/transacciones"
+ENVIOS_API_URL = "http://localhost:6000/api/envios/crear"
+TARJETA_DESTINO_COMERCIO = "0000 0009 8765 4321"  
+
+class SistemaServices:
+
     @staticmethod
-    async def crear_envio(db: Session, datos: EnvioIniciarSchema):
+    def obtener_catalogo_completo_sin_filtros(db: Session):
         """
-        📦 CREAR SOLICITUD DE ENVÍO
+        🛒 CATÁLOGO COMPLETO SIN FILTROS
         
-        1. Busca el pedido en la BD
-        2. Obtiene datos del cliente y productos
-        3. Envía solicitud a la API de envíos
-        4. Guarda la respuesta
+        Devuelve TODOS los productos activos de TODAS las tiendas.
+        No requiere parámetros.
+        
+        Devuelve productos en formato:
+        {
+            "store_id": 1,
+            "id": 5,
+            "nombre": "Producto",
+            "description": "...",
+            "precio": 299.99,
+            "talla": "M",
+            "color": "Rojo",
+            "stock": 10,
+            "duracion_minutos": null
+        }
         """
+        # Query: todos los productos activos
+        productos = db.query(Producto).filter(Producto.activo == True).all()
         
-        # 1. Buscar el pedido con sus relaciones
-        pedido = db.query(Pedido).filter(Pedido.id_pedido == datos.id_pedido).first()
-        if not pedido:
-            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        # Formatear respuesta
+        catalogo_productos = []
+        for p in productos:
+            catalogo_productos.append({
+                "store_id": p.store_id,
+                "id": p.id_producto,
+                "nombre": p.nombre,
+                "description": p.descripcion,
+                "precio": float(p.precio),
+                "talla": p.talla,
+                "color": p.color,
+                "stock": p.stock,
+                "duracion_minutos": p.duracion_minutos
+            })
         
-        # 2. Obtener cliente y dirección
-        cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
-        if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        return catalogo_productos
+
+    @staticmethod
+    def verificar_disponibilidad_producto(db: Session, id_producto: int, cantidad_solicitada: int):
+        """Verifica si hay stock suficiente para surtir un pedido"""
         
-        direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
-        if not direccion:
-            raise HTTPException(status_code=404, detail="Dirección no encontrada")
+        # 1. Validar que la cantidad sea positiva
+        if cantidad_solicitada <= 0:
+            raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a 0")
         
-        # 3. Generar ID único para la orden
-        id_orden_externa = f"ECM-{datetime.now().year}-{pedido.id_pedido:05d}"
+        # 2. Buscar el producto en la base de datos
+        producto = db.query(Producto).filter(
+            Producto.id_producto == id_producto
+        ).first()
         
-        # 4. Preparar datos del cliente
-        datos_cliente = DatosClienteEnvioSchema(
-            nombre=f"{cliente.nombre} {cliente.apellido_paterno}",
-            telefono=cliente.telefono or "Sin teléfono",
-            email=cliente.email,
-            direccion_completa=direccion.calle,
-            ciudad=direccion.ciudad,
-            estado=direccion.estado,
-            codigo_postal=direccion.codigo_postal
+        # 3. Si no existe el producto, error
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+        # 4. Si el producto está inactivo, error
+        if not producto.activo:
+            raise HTTPException(status_code=400, detail="Producto no disponible")
+        
+        # 5. Devolver solo id_producto y stock
+        return {
+            "id_producto": producto.id_producto,
+            "stock": producto.stock
+        }
+
+
+    @staticmethod
+    def obtener_catalogo_completo(db: Session, store_id: int = 1, category: int = None):
+        """
+        🛒 CATÁLOGO PARA API DISTRIBUIDA
+        
+        Recibe:
+        - store_id: ID de tu tienda
+        - category: ID de categoría (opcional)
+        
+        Devuelve productos en formato:
+        {
+            "store_id": 1,
+            "id": 5,
+            "nombre": "Producto",
+            "description": "...",
+            "precio": 299.99,
+            "talla": "M",
+            "color": "Rojo",
+            "stock": 10,
+            "duracion_minutos": null
+        }
+        """
+        # Query base: productos activos de esta tienda
+        query = db.query(Producto).filter(
+            Producto.activo == True,
+            Producto.store_id == store_id
         )
         
-        # 5. Preparar lista de productos
-        productos = []
-        for item in pedido.items:
-            productos.append(ProductoEnvioSchema(
-                id_producto=item.id_producto,
-                nombre=item.producto.nombre,
-                cantidad=item.cantidad,
-                precio=float(item.precio_unitario)
-            ))
+        # Si enviaron categoría específica, filtrar por ella
+        if category is not None:
+            query = query.filter(Producto.id_categoria == category)
         
-        # 6. Crear registro de envío en estado PENDIENTE
-        envio = Envio(
-            id_pedido=pedido.id_pedido,
-            id_orden_externa=id_orden_externa,
-            id_orden_original=pedido.id_pedido,
-            servicio_origen="ecommerce",
-            estado_actual="PENDIENTE"
-        )
-        db.add(envio)
-        db.commit()
-        db.refresh(envio)
+        productos = query.all()
         
-        try:
-            # 7. Preparar solicitud completa
-            solicitud = EnvioSolicitudSchema(
-                id_orden_externa=id_orden_externa,
-                id_orden_original=pedido.id_pedido,
-                servicio_origen="ecommerce",
-                datos_cliente=datos_cliente,
-                productos=productos
-            )
-            
-            # Guardar lo que enviaste (auditoría)
-            envio.request_json = solicitud.model_dump_json()
-            
-            # 8. Enviar a la API de envíos
-            async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(
-                    ENVIOS_API_URL,
-                    json=solicitud.model_dump()
-                )
-            
-            # 9. Procesar respuesta
-            if response.status_code == 200 or response.status_code == 201:
-                respuesta = response.json()
-                envio_resp = EnvioRespuestaSchema(**respuesta)
-                
-                # Guardar datos de la respuesta
-                envio.codigo_seguimiento = envio_resp.codigo_seguimiento
-                envio.estado_actual = envio_resp.estado_actual
-                envio.ubicacion_actual = envio_resp.ubicacion_actual
-                envio.fecha_actualizacion = datetime.fromisoformat(
-                    envio_resp.fecha_actualizacion.replace('Z', '')
-                )
-                envio.response_json = json.dumps(respuesta)
-                
-            else:
-                # Error en la API de envíos
-                envio.estado_actual = "ERROR"
-                envio.response_json = response.text
-            
-            db.commit()
-            db.refresh(envio)
-            
-            return EnvioResponseSchema.model_validate(envio)
-            
-        except Exception as e:
-            envio.estado_actual = "ERROR"
-            db.commit()
-            raise HTTPException(status_code=500, detail=f"Error al crear envío: {str(e)}")
-    
-    
-    @staticmethod
-    def consultar_envio(db: Session, id_envio: int):
-        """🔍 Consultar estado de un envío"""
-        envio = db.query(Envio).filter(Envio.id_envio == id_envio).first()
-        if not envio:
-            raise HTTPException(status_code=404, detail="Envío no encontrado")
-        return EnvioResponseSchema.model_validate(envio)
-    
-    
-    @staticmethod
-    def consultar_envio_por_pedido(db: Session, id_pedido: int):
-        """🔍 Consultar envío de un pedido específico"""
-        envio = db.query(Envio).filter(Envio.id_pedido == id_pedido).first()
-        if not envio:
-            raise HTTPException(status_code=404, detail="Envío no encontrado para este pedido")
-        return EnvioResponseSchema.model_validate(envio)
+        # Formatear respuesta según el formato que esperan otros equipos
+        catalogo_productos = []
+        for p in productos:
+            catalogo_productos.append({
+                "store_id": p.store_id,
+                "id": p.id_producto,
+                "nombre": p.nombre,
+                "description": p.descripcion,
+                "precio": float(p.precio),
+                "talla": p.talla,
+                "color": p.color,
+                "stock": p.stock,
+                "duracion_minutos": p.duracion_minutos
+            })
+        
+        return catalogo_productos
