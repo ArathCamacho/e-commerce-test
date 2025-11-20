@@ -13,6 +13,8 @@ from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
 from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
 from app.services.pagoservices import PagoServices
 from app.models.Pago import PagoIniciarSchema, PagoResponseSchema
+from app.services.envioservices import EnvioServices
+from app.models.Envio import EnvioIniciarSchema, EnvioResponseSchema
 
 router = APIRouter()
 
@@ -152,3 +154,41 @@ async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db))
 async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
     """🔍 Consultar estado de un pago"""
     return PagoServices.consultar_pago(db, id_pago)
+
+@router.post("/envios/crear", response_model=EnvioResponseSchema)
+async def crear_envio(datos: EnvioIniciarSchema, db: Session = Depends(get_db)):
+    """
+    📦 Crear solicitud de envío
+    
+    Body: {
+        "id_pedido": 15
+    }
+    
+    Respuesta:
+    {
+        "id_envio": 1,
+        "id_pedido": 15,
+        "id_orden_externa": "ECM-2024-00015",
+        "codigo_seguimiento": "ENV-ABC123",
+        "estado_actual": "EN_PREPARACION",
+        "ubicacion_actual": "Centro de distribución",
+        "fecha_actualizacion": "2024-11-19T10:30:00"
+    }
+    """
+    return await EnvioServices.crear_envio(db, datos)
+
+
+@router.get("/envios/{id_envio}", response_model=EnvioResponseSchema)
+async def consultar_envio(id_envio: int, db: Session = Depends(get_db)):
+    """🔍 Consultar estado de un envío por ID"""
+    return EnvioServices.consultar_envio(db, id_envio)
+
+
+@router.get("/envios/pedido/{id_pedido}", response_model=EnvioResponseSchema)
+async def consultar_envio_por_pedido(id_pedido: int, db: Session = Depends(get_db)):
+    """
+    🔍 Consultar envío de un pedido
+    
+    Ejemplo: GET /api/envios/pedido/15
+    """
+    return EnvioServices.consultar_envio_por_pedido(db, id_pedido)
