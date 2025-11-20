@@ -52,7 +52,7 @@ class EnvioServices:
         
         # 4. Preparar datos del cliente
         datos_cliente = DatosClienteEnvioSchema(
-            nombre=f"{cliente.nombre} {cliente.apellido_paterno}",
+            nombre=f"{cliente.nombre} {cliente.apellido}",
             telefono=cliente.telefono or "Sin teléfono",
             email=cliente.email,
             direccion_completa=direccion.calle,
