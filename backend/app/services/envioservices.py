@@ -17,7 +17,8 @@ from app.models.Pedido import Pedido
 from app.models.Cliente import Cliente
 from app.models.Direccion import Direccion
 
-ENVIOS_API_URL = "http://localhost:6000/api/envios/crear"  # 🔴 CAMBIAR según la URL del otro equipo
+ENVIOS_API_URL = "https://api-envios-equipo.onrender.com/api/envios/crear"
+
 
 class EnvioServices:
     
