@@ -24,8 +24,9 @@ class Producto(Base):
     
     # Relaciones
     categoria = relationship("Categoria", back_populates="productos")
-    items_carrito = relationship("Carrito_Item", back_populates="producto")
-    items_pedido = relationship("Pedido_Item", back_populates="producto")
+    items_carrito = relationship("CarritoItem", back_populates="producto")  # ✅ CORREGIDO
+    items_pedido = relationship("PedidoItem", back_populates="producto")    # ✅ CORREGIDO
+
 
 # Schemas de Pydantic
 class ProductoResponseSchema(BaseModel):
