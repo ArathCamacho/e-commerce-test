@@ -14,10 +14,11 @@ class Carrito(Base):
     
     # Relaciones
     cliente = relationship("Cliente", back_populates="carritos")
-    items = relationship("Carrito_Item", back_populates="carrito", cascade="all, delete-orphan")
+    items = relationship("CarritoItem", back_populates="carrito", cascade="all, delete-orphan")  # ✅ CORREGIDO
 
-class Carrito_Item(Base):
-    __tablename__ = "carrito_item"
+
+class CarritoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
+    __tablename__ = "carrito_item"  # ← La tabla en BD sigue igual
     
     id_item = Column(Integer, primary_key=True, index=True)
     id_carrito = Column(Integer, ForeignKey("carrito.id_carrito"), nullable=False)

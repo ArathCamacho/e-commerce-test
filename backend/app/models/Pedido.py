@@ -5,10 +5,6 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
-# ============================================
-# MODELO DE BASE DE DATOS (SQLAlchemy)
-# ============================================
-
 class Pedido(Base):
     __tablename__ = "pedido"
     
@@ -21,13 +17,13 @@ class Pedido(Base):
     
     # Relaciones
     cliente = relationship("Cliente", back_populates="pedidos")
-    direccion = relationship("Direccion")
-    items = relationship("Pedido_Item", back_populates="pedido")
+    direccion = relationship("Direccion", back_populates="pedidos")
+    items = relationship("PedidoItem", back_populates="pedido")  # ✅
     pagos = relationship("Pago", back_populates="pedido")
-    envios = relationship("Envio", back_populates="pedido")  # 👈 ESTA ES LA NUEVA
+    envios = relationship("Envio", back_populates="pedido")
 
 
-class Pedido_Item(Base):
+class PedidoItem(Base):  # ✅ RENOMBRADO
     __tablename__ = "pedido_item"
     
     id_pedido_item = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -41,15 +37,10 @@ class Pedido_Item(Base):
     producto = relationship("Producto", back_populates="items_pedido")
 
 
-
-# ============================================
-# SCHEMAS DE PYDANTIC
-# ============================================
-
+# Schemas
 class PedidoItemCreateSchema(BaseModel):
     id_producto: int
     cantidad: int
-
 
 class PedidoItemResponseSchema(BaseModel):
     id_pedido_item: int
@@ -60,13 +51,10 @@ class PedidoItemResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
-
-
 class PedidoCreateSchema(BaseModel):
     id_cliente: int
     id_direccion: int
     items: List[PedidoItemCreateSchema]
-
 
 class PedidoResponseSchema(BaseModel):
     id_pedido: int
@@ -79,7 +67,6 @@ class PedidoResponseSchema(BaseModel):
     
     class Config:
         from_attributes = True
-
 
 class PagoRequestSchema(BaseModel):
     """Schema para solicitar un pago"""
