@@ -10,7 +10,7 @@ from app.models.VentaExterna import (
     VentaExternaResponseSchema
 )
 from app.models.Producto import Producto
-from app.models.Pedido import Pedido, Pedido_Item
+from app.models.Pedido import Pedido, PedidoItem
 from app.models.Cliente import Cliente
 
 
@@ -134,7 +134,7 @@ class VentaExternaServices:
             db.refresh(pedido)
             
             # 6. Crear item del pedido
-            item = Pedido_Item(
+            item = PedidoItem(
                 id_pedido=pedido.id_pedido,
                 id_producto=producto.id_producto,
                 cantidad=datos.quantity,

@@ -14,7 +14,7 @@ from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequ
 from app.services.pagoservices import PagoServices
 from app.models.Pago import PagoIniciarSchema, PagoResponseSchema
 from app.services.envioservices import EnvioServices
-from app.models.Envio import EnvioIniciarSchema, EnvioResponseSchema
+from app.models.Envio import EnvioSolicitudSchema, EnvioResponseSchema
 
 from app.services.ventaexternaservices import VentaExternaServices
 from app.models.VentaExterna import VentaExternaRegistroSchema, VentaExternaResponseSchema

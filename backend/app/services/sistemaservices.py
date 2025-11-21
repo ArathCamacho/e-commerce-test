@@ -17,7 +17,7 @@ from app.models.Carrito import (
     CarritoResponseSchema,
     CarritoItemResponseSchema
 )
-from app.models.Pedido import Pedido, Pedido_Item, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
+from app.models.Pedido import Pedido, PedidoItem, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
 from app.models.Pago import Pago, PagoIniciarSchema, BancoSolicitudSchema, BancoRespuestaSchema, PagoResponseSchema
 
 
