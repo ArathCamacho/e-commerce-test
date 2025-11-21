@@ -18,11 +18,14 @@ class Envio(Base):
     __tablename__ = "envio"
     
     id_envio = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=False)
+    
+    # ✅ CAMBIO: id_pedido ahora es OPCIONAL (nullable=True)
+    # Esto permite crear envíos sin necesidad de tener un pedido en la BD
+    id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
     
     # SOLICITUD - Lo que enviaste
     id_orden_externa = Column(String(100), nullable=False, unique=True)  # Tu ID único
-    id_orden_original = Column(Integer, nullable=False)  # El id_pedido
+    id_orden_original = Column(Integer, nullable=False)  # El id del pedido externo
     servicio_origen = Column(String(100), default="ecommerce")
     
     # RESPUESTA - Lo que recibiste
@@ -36,7 +39,7 @@ class Envio(Base):
     request_json = Column(Text, nullable=True)  # Lo que enviaste (auditoría)
     response_json = Column(Text, nullable=True)  # Lo que recibiste (auditoría)
     
-    # Relación
+    # Relación (ahora opcional)
     pedido = relationship("Pedido", back_populates="envios")
 
 
@@ -156,7 +159,7 @@ class EnvioIniciarSchema(BaseModel):
 class EnvioResponseSchema(BaseModel):
     """Lo que devuelves al frontend"""
     id_envio: int
-    id_pedido: int
+    id_pedido: Optional[int] = None  # ✅ Ahora es opcional
     id_orden_externa: str
     codigo_seguimiento: Optional[str] = None
     estado_actual: Optional[str] = None

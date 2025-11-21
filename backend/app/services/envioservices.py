@@ -10,6 +10,7 @@ from app.models.Envio import (
     EnvioRespuestaSchema, 
     EnvioResponseSchema
 )
+from app.models.Pedido import Pedido  # ✅ Agregar este import
 
 # ✅ URL CORREGIDA del sistema de envíos
 ENVIOS_API_URL = "https://gestion-envios-sz3x.onrender.com/api/envios/crear"
@@ -85,8 +86,13 @@ class EnvioServices:
         print(f"   Productos: {len(datos.productos)}")
         
         # 1. Crear registro en BD (estado PENDIENTE)
+        # ✅ Validar si el pedido existe antes de asignarlo
+        pedido_existe = db.query(Pedido).filter(
+            Pedido.id_pedido == datos.id_orden_original
+        ).first() if datos.id_orden_original else None
+        
         envio = Envio(
-            id_pedido=datos.id_orden_original,
+            id_pedido=datos.id_orden_original if pedido_existe else None,
             id_orden_externa=datos.id_orden_externa,
             id_orden_original=datos.id_orden_original,
             servicio_origen=datos.servicio_origen,
@@ -95,6 +101,10 @@ class EnvioServices:
         db.add(envio)
         db.commit()
         db.refresh(envio)
+        
+        if not pedido_existe and datos.id_orden_original:
+            print(f"⚠️ ADVERTENCIA: El pedido {datos.id_orden_original} no existe en la BD")
+            print(f"   El envío se creará sin referencia al pedido")
         
         print(f"\n✅ Registro de envío creado en BD: ID={envio.id_envio}")
         
