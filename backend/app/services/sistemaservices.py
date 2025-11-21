@@ -10,7 +10,13 @@ from app.models.Cliente import Cliente, ClienteRegistroSchema, ClienteResponseSc
 from app.models.Direccion import Direccion, DireccionCreateSchema, DireccionResponseSchema
 from app.models.Categoria import Categoria, CategoriaResponseSchema
 from app.models.Producto import Producto, ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema
-from app.models.Carrito import Carrito, Carrito_Item, CarritoAgregarSchema, CarritoResponseSchema, CarritoItemResponseSchema
+from app.models.Carrito import (
+    Carrito,
+    CarritoItem,  # ← Este es el nombre real de la clase
+    CarritoAgregarSchema,
+    CarritoResponseSchema,
+    CarritoItemResponseSchema
+)
 from app.models.Pedido import Pedido, Pedido_Item, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
 from app.models.Pago import Pago, PagoIniciarSchema, BancoSolicitudSchema, BancoRespuestaSchema, PagoResponseSchema
 
