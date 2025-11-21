@@ -1,135 +1,82 @@
 import httpx
 import json
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.models.Envio import (
     Envio, 
-    EnvioIniciarSchema, 
-    EnvioSolicitudSchema, 
+    EnvioSolicitudSchema,  # ✅ Este ya tiene TODOS los campos
     EnvioRespuestaSchema, 
-    EnvioResponseSchema,
-    ProductoEnvioSchema,
-    DatosClienteEnvioSchema
+    EnvioResponseSchema
 )
-from app.models.Pedido import Pedido
-from app.models.Cliente import Cliente
-from app.models.Direccion import Direccion
 
-ENVIOS_API_URL = "https://gestion-envios-sz3x.onrender.com/api/envios/crear"
+ENVIOS_API_URL = "https://api-envios-equipo.onrender.com/api/envios/crear"
 
 
 class EnvioServices:
     
     @staticmethod
-    async def crear_envio(db: Session, datos: EnvioIniciarSchema):
+    async def crear_envio(db: Session, datos: EnvioSolicitudSchema):
         """
-        📦 CREAR SOLICITUD DE ENVÍO
+        📦 CREAR SOLICITUD DE ENVÍO (RECIBE DATOS COMPLETOS)
         
-        Flujo:
-        1. Buscar pedido con sus items y productos
-        2. Validar cliente y dirección
-        3. Construir JSON (SOL_ENV)
-        4. Enviar a API externa
-        5. Guardar respuesta (EDO_ENV)
+        Flujo simplificado:
+        1. Recibe todos los datos ya preparados
+        2. Valida estructura
+        3. Envía a API externa
+        4. Guarda respuesta
+        
+        Request esperado:
+        {
+          "id_orden_externa": "ECM-2025-00002",
+          "id_orden_original": 2,
+          "servicio_origen": "ecommerce",
+          "datos_cliente": {
+            "nombre": "Juan Pérez",
+            "telefono": "6621234567",
+            "email": "juan@example.com",
+            "direccion_completa": "Calle Sol #45",
+            "ciudad": "Hermosillo",
+            "estado": "Sonora",
+            "codigo_postal": "83100"
+          },
+          "productos": [
+            {
+              "id_producto": 1,
+              "nombre": "Playera Básica",
+              "cantidad": 2,
+              "precio": 199.99
+            }
+          ]
+        }
         """
         
         print(f"\n{'='*60}")
-        print(f"🚀 INICIANDO CREACIÓN DE ENVÍO PARA PEDIDO {datos.id_pedido}")
+        print(f"🚀 INICIANDO CREACIÓN DE ENVÍO")
         print(f"{'='*60}\n")
         
-        # 1. Buscar pedido con EAGER LOADING (items + productos)
-        pedido = db.query(Pedido).options(
-            joinedload(Pedido.items).joinedload('producto')
-        ).filter(Pedido.id_pedido == datos.id_pedido).first()
-        
-        if not pedido:
-            raise HTTPException(status_code=404, detail=f"❌ Pedido {datos.id_pedido} no encontrado")
-        
-        print(f"✅ Pedido encontrado: ID={pedido.id_pedido}, Total={pedido.total}")
-        print(f"   Cliente ID: {pedido.id_cliente}")
-        print(f"   Dirección ID: {pedido.id_direccion}")
-        print(f"   Items: {len(pedido.items) if pedido.items else 0}")
-        
-        # Validar que tenga items
-        if not pedido.items or len(pedido.items) == 0:
+        # Validaciones básicas
+        if not datos.productos or len(datos.productos) == 0:
             raise HTTPException(
-                status_code=400, 
-                detail=f"❌ El pedido {datos.id_pedido} no tiene productos (tabla pedido_item vacía)"
+                status_code=400,
+                detail="❌ Debe incluir al menos un producto"
             )
         
-        # 2. Obtener cliente
-        cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
-        if not cliente:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"❌ Cliente {pedido.id_cliente} no encontrado"
-            )
+        print(f"📦 Datos recibidos:")
+        print(f"   ID orden externa: {datos.id_orden_externa}")
+        print(f"   ID orden original: {datos.id_orden_original}")
+        print(f"   Servicio: {datos.servicio_origen}")
+        print(f"   Cliente: {datos.datos_cliente.nombre}")
+        print(f"   Email: {datos.datos_cliente.email}")
+        print(f"   Productos: {len(datos.productos)}")
         
-        print(f"✅ Cliente encontrado: {cliente.nombre} {cliente.apellido}")
-        print(f"   Email: {cliente.correo}")
-        print(f"   Teléfono: {cliente.telefono}")
-        
-        # 3. Obtener dirección
-        direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
-        if not direccion:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"❌ Dirección {pedido.id_direccion} no encontrada"
-            )
-        
-        print(f"✅ Dirección encontrada: {direccion.calle}")
-        print(f"   Ciudad: {direccion.ciudad}, {direccion.estado} {direccion.codigo_postal}")
-        
-        # 4. Generar ID único
-        id_orden_externa = f"ECM-{datetime.now().year}-{pedido.id_pedido:05d}"
-        print(f"✅ ID orden externa generado: {id_orden_externa}")
-        
-        # 5. Preparar datos del cliente
-        datos_cliente = DatosClienteEnvioSchema(
-            nombre=f"{cliente.nombre} {cliente.apellido}",
-            telefono=cliente.telefono or "Sin teléfono",
-            email=cliente.correo,
-            direccion_completa=direccion.calle,
-            ciudad=direccion.ciudad,
-            estado=direccion.estado,
-            codigo_postal=direccion.codigo_postal
-        )
-        
-        print(f"\n📋 Datos del cliente preparados:")
-        print(f"   Nombre: {datos_cliente.nombre}")
-        print(f"   Email: {datos_cliente.email}")
-        
-        # 6. Preparar lista de productos
-        productos = []
-        print(f"\n📦 Procesando {len(pedido.items)} productos:")
-        
-        for idx, item in enumerate(pedido.items, 1):
-            # Validar que el item tenga producto asociado
-            if not item.producto:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"❌ El item {item.id_pedido_item} no tiene producto asociado (verifica relaciones)"
-                )
-            
-            producto_envio = ProductoEnvioSchema(
-                id_producto=item.id_producto,
-                nombre=item.producto.nombre,
-                cantidad=item.cantidad,
-                precio=float(item.precio_unitario)
-            )
-            productos.append(producto_envio)
-            
-            print(f"   {idx}. {item.producto.nombre}")
-            print(f"      ID: {item.id_producto} | Cant: {item.cantidad} | Precio: ${item.precio_unitario}")
-        
-        # 7. Crear registro en BD (estado PENDIENTE)
+        # 1. Crear registro en BD (estado PENDIENTE)
         envio = Envio(
-            id_pedido=pedido.id_pedido,
-            id_orden_externa=id_orden_externa,
-            id_orden_original=pedido.id_pedido,
-            servicio_origen="ecommerce",
+            id_pedido=datos.id_orden_original,  # Guardamos referencia al pedido
+            id_orden_externa=datos.id_orden_externa,
+            id_orden_original=datos.id_orden_original,
+            servicio_origen=datos.servicio_origen,
             estado_actual="PENDIENTE"
         )
         db.add(envio)
@@ -139,26 +86,17 @@ class EnvioServices:
         print(f"\n✅ Registro de envío creado en BD: ID={envio.id_envio}")
         
         try:
-            # 8. Construir solicitud (SOL_ENV)
-            solicitud = EnvioSolicitudSchema(
-                id_orden_externa=id_orden_externa,
-                id_orden_original=pedido.id_pedido,
-                servicio_origen="ecommerce",
-                datos_cliente=datos_cliente,
-                productos=productos
-            )
-            
-            # Guardar solicitud (auditoría)
-            request_dict = solicitud.model_dump()
+            # 2. Preparar solicitud (ya viene en el formato correcto)
+            request_dict = datos.model_dump()
             envio.request_json = json.dumps(request_dict, ensure_ascii=False, indent=2)
             db.commit()
             
             print(f"\n📤 ENVIANDO A API EXTERNA:")
             print(f"   URL: {ENVIOS_API_URL}")
-            print(f"   Payload:")
+            print(f"\n   Payload completo:")
             print(json.dumps(request_dict, ensure_ascii=False, indent=2))
             
-            # 9. Enviar a API externa
+            # 3. Enviar a API externa
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     ENVIOS_API_URL,
@@ -168,13 +106,15 @@ class EnvioServices:
             
             print(f"\n📥 RESPUESTA DE API EXTERNA:")
             print(f"   Status Code: {response.status_code}")
-            print(f"   Body: {response.text[:500]}")  # Primeros 500 chars
+            print(f"   Headers: {dict(response.headers)}")
+            print(f"\n   Body completo:")
+            print(response.text)
             
-            # 10. Procesar respuesta
+            # 4. Procesar respuesta
             if response.status_code in [200, 201]:
                 respuesta = response.json()
                 
-                # Validar estructura de respuesta
+                # Validar estructura de respuesta (debe tener los 5 campos)
                 try:
                     envio_resp = EnvioRespuestaSchema(**respuesta)
                     
@@ -183,32 +123,62 @@ class EnvioServices:
                     envio.estado_actual = envio_resp.estado_actual
                     envio.ubicacion_actual = envio_resp.ubicacion_actual
                     
-                    # Parsear fecha
-                    fecha_str = envio_resp.fecha_actualizacion.replace('Z', '+00:00')
+                    # Parsear fecha (manejar formato con/sin Z)
+                    fecha_str = envio_resp.fecha_actualizacion
+                    if fecha_str.endswith('Z'):
+                        fecha_str = fecha_str.replace('Z', '+00:00')
                     envio.fecha_actualizacion = datetime.fromisoformat(fecha_str)
                     
                     # Guardar respuesta completa
                     envio.response_json = json.dumps(respuesta, ensure_ascii=False, indent=2)
                     
                     print(f"\n✅ ENVÍO CREADO EXITOSAMENTE:")
+                    print(f"   ID Envío: {envio.id_envio}")
                     print(f"   Código seguimiento: {envio.codigo_seguimiento}")
                     print(f"   Estado: {envio.estado_actual}")
+                    print(f"   Ubicación: {envio.ubicacion_actual}")
+                    print(f"   Última actualización: {envio.fecha_actualizacion}")
                     
-                except Exception as e:
-                    # Error al parsear respuesta
+                except ValueError as e:
+                    # Error al parsear respuesta (campos faltantes o incorrectos)
                     envio.estado_actual = "ERROR"
-                    envio.response_json = f"Error al parsear respuesta: {str(e)}\n\nRespuesta: {response.text}"
-                    print(f"\n❌ ERROR AL PARSEAR RESPUESTA: {str(e)}")
+                    error_msg = f"Respuesta inválida del servidor de envíos. Campos esperados: id_orden_externa, codigo_seguimiento, estado_actual, ubicacion_actual, fecha_actualizacion. Error: {str(e)}"
+                    envio.response_json = f"{error_msg}\n\nRespuesta recibida:\n{response.text}"
+                    print(f"\n❌ ERROR EN FORMATO DE RESPUESTA:")
+                    print(f"   {error_msg}")
                     
             else:
-                # Error HTTP de la API
+                # Error HTTP de la API (400, 404, 422, 500, etc.)
                 envio.estado_actual = "ERROR"
                 error_detail = {
                     "status_code": response.status_code,
-                    "error": response.text
+                    "error": response.text,
+                    "url": ENVIOS_API_URL
                 }
                 envio.response_json = json.dumps(error_detail, ensure_ascii=False, indent=2)
-                print(f"\n❌ ERROR HTTP {response.status_code}: {response.text}")
+                
+                print(f"\n❌ ERROR HTTP {response.status_code}")
+                print(f"   URL: {ENVIOS_API_URL}")
+                print(f"   Respuesta del servidor:")
+                print(f"   {response.text}")
+                
+                # Mensajes específicos según código de error
+                if response.status_code == 404:
+                    print(f"\n⚠️ ERROR 404 - ENDPOINT NO ENCONTRADO")
+                    print(f"   Verifica con el equipo de envíos que:")
+                    print(f"   1. Su API esté desplegada y funcionando")
+                    print(f"   2. La URL sea correcta: {ENVIOS_API_URL}")
+                    print(f"   3. El endpoint acepte POST")
+                    
+                elif response.status_code == 422:
+                    print(f"\n⚠️ ERROR 422 - DATOS INVÁLIDOS")
+                    print(f"   El servidor rechazó los datos enviados")
+                    print(f"   Verifica que los campos coincidan con su esquema")
+                    
+                elif response.status_code >= 500:
+                    print(f"\n⚠️ ERROR {response.status_code} - FALLO DEL SERVIDOR")
+                    print(f"   El servidor de envíos tiene un error interno")
+                    print(f"   Contacta al equipo de envíos")
             
             db.commit()
             db.refresh(envio)
@@ -220,28 +190,44 @@ class EnvioServices:
             return EnvioResponseSchema.model_validate(envio)
             
         except httpx.TimeoutException as e:
-            # Timeout en la llamada
+            # Timeout en la llamada (no respondió en 30 segundos)
             envio.estado_actual = "ERROR"
-            envio.response_json = f"Timeout: La API no respondió en 30 segundos. {str(e)}"
+            envio.response_json = f"Timeout: La API de envíos no respondió en 30 segundos. {str(e)}"
             db.commit()
             print(f"\n❌ TIMEOUT: La API externa no respondió")
-            raise HTTPException(status_code=504, detail="Timeout: La API de envíos no respondió")
+            print(f"   El servidor puede estar caído o muy lento")
+            raise HTTPException(
+                status_code=504, 
+                detail="Timeout: La API de envíos no respondió en 30 segundos"
+            )
             
         except httpx.RequestError as e:
-            # Error de red/conexión
+            # Error de red/conexión (DNS, SSL, etc.)
             envio.estado_actual = "ERROR"
             envio.response_json = f"Error de conexión: {str(e)}"
             db.commit()
             print(f"\n❌ ERROR DE CONEXIÓN: {str(e)}")
-            raise HTTPException(status_code=503, detail=f"Error de conexión con API de envíos: {str(e)}")
+            print(f"   Posibles causas:")
+            print(f"   - URL incorrecta")
+            print(f"   - Servidor de envíos caído")
+            print(f"   - Problemas de red")
+            raise HTTPException(
+                status_code=503, 
+                detail=f"No se pudo conectar con la API de envíos: {str(e)}"
+            )
             
         except Exception as e:
-            # Cualquier otro error
+            # Cualquier otro error inesperado
             envio.estado_actual = "ERROR"
             envio.response_json = f"Error inesperado: {str(e)}"
             db.commit()
             print(f"\n❌ ERROR INESPERADO: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Error al crear envío: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error interno al procesar envío: {str(e)}"
+            )
     
     
     @staticmethod
@@ -254,8 +240,10 @@ class EnvioServices:
         # Debug si está en error
         if envio.estado_actual == "ERROR":
             print(f"\n⚠️ ENVÍO {id_envio} EN ERROR:")
-            print(f"Request enviado:\n{envio.request_json}\n")
-            print(f"Response recibido:\n{envio.response_json}\n")
+            print(f"\n📤 Request enviado:")
+            print(envio.request_json)
+            print(f"\n📥 Response recibido:")
+            print(envio.response_json)
         
         return EnvioResponseSchema.model_validate(envio)
     

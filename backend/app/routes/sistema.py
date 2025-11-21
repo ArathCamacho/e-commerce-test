@@ -201,31 +201,73 @@ async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_d
     return PagoServices.consultar_pagos_por_pedido(db, id_pedido)
 
 @router.post("/envios/crear", response_model=EnvioResponseSchema)
-async def crear_envio(datos: EnvioIniciarSchema, db: Session = Depends(get_db)):
+async def crear_envio(datos: EnvioSolicitudSchema, db: Session = Depends(get_db)):
     """
-    📦 Crear solicitud de envío
+    📦 CREAR SOLICITUD DE ENVÍO (RECIBE DATOS COMPLETOS)
     
-    Body: {
-        "id_pedido": 15
-    }
+    Ahora este endpoint recibe TODOS los datos directamente,
+    no solo el id_pedido.
     
-    Respuesta:
+    Body completo:
     {
-        "id_envio": 1,
-        "id_pedido": 15,
-        "id_orden_externa": "ECM-2024-00015",
-        "codigo_seguimiento": "ENV-ABC123",
-        "estado_actual": "EN_PREPARACION",
-        "ubicacion_actual": "Centro de distribución",
-        "fecha_actualizacion": "2024-11-19T10:30:00"
+      "id_orden_externa": "ECM-2025-00002",
+      "id_orden_original": 2,
+      "servicio_origen": "ecommerce",
+      "datos_cliente": {
+        "nombre": "Juan Pérez",
+        "telefono": "6621234567",
+        "email": "juan@example.com",
+        "direccion_completa": "Calle Sol #45",
+        "ciudad": "Hermosillo",
+        "estado": "Sonora",
+        "codigo_postal": "83100"
+      },
+      "productos": [
+        {
+          "id_producto": 1,
+          "nombre": "Playera Básica",
+          "cantidad": 2,
+          "precio": 199.99
+        }
+      ]
     }
+    
+    Respuesta exitosa (5 campos + 2 internos):
+    {
+      "id_envio": 10,                           // ← Tu ID interno
+      "id_pedido": 2,                           // ← Referencia al pedido
+      "id_orden_externa": "ECM-2025-00002",     // ← Del request
+      "codigo_seguimiento": "ENV-ABC123",       // ← Del servidor de envíos
+      "estado_actual": "EN_PREPARACION",        // ← Del servidor de envíos
+      "ubicacion_actual": "Centro distribución", // ← Del servidor de envíos
+      "fecha_actualizacion": "2025-11-20T10:30:00" // ← Del servidor de envíos
+    }
+    
+    Respuesta con error:
+    {
+      "id_envio": 10,
+      "id_pedido": 2,
+      "id_orden_externa": "ECM-2025-00002",
+      "codigo_seguimiento": null,
+      "estado_actual": "ERROR",
+      "ubicacion_actual": null,
+      "fecha_actualizacion": null
+    }
+    (Revisar response_json en BD para ver el error exacto)
     """
     return await EnvioServices.crear_envio(db, datos)
 
 
 @router.get("/envios/{id_envio}", response_model=EnvioResponseSchema)
 async def consultar_envio(id_envio: int, db: Session = Depends(get_db)):
-    """🔍 Consultar estado de un envío por ID"""
+    """
+    🔍 Consultar estado de un envío por ID
+    
+    Ejemplo: GET /api/envios/10
+    
+    Si el envío está en ERROR, revisa los logs del servidor
+    para ver qué falló (request_json y response_json).
+    """
     return EnvioServices.consultar_envio(db, id_envio)
 
 
@@ -234,9 +276,10 @@ async def consultar_envio_por_pedido(id_pedido: int, db: Session = Depends(get_d
     """
     🔍 Consultar envío de un pedido
     
-    Ejemplo: GET /api/envios/pedido/15
+    Ejemplo: GET /api/envios/pedido/2
     """
     return EnvioServices.consultar_envio_por_pedido(db, id_pedido)
+
 @router.get("/catalogo/all")
 async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
     """
