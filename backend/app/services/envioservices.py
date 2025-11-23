@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 # 🔧 CONFIGURACIÓN
 # ============================================
 
-# ⚙️ MODO DESARROLLO (mock local)
-ENVIOS_API_URL = "http://localhost:8000/api/envios/mock"
+# ⚙️ MODO DESARROLLO (usando tu mock en Render)
+ENVIOS_API_URL = "https://e-commerce-test-mm6o.onrender.com/api/envios/mock"
 
 # ⚙️ MODO PRODUCCIÓN (cuando tengas su URL)
 # ENVIOS_API_URL = "https://gestion-envios-sz3x.onrender.com/api/envios/crear"
