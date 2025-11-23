@@ -1,8 +1,19 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+export default {
+  darkMode: 'class',
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Lato', 'sans-serif'],
+      },
+    },
   },
-  plugins: [],
-};
+  plugins: [
+    require("@designbycode/tailwindcss-text-stroke"),
+  ],
+}
+
