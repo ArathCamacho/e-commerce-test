@@ -9,11 +9,11 @@ export function AddressCard({ address, onEdit, onDelete, onClick }) {
     return (
         <fieldset
             onClick={() => onClick(address.id)}
-            className={`p-5 relative cursor-pointer transition-all ${address.isDefault
+            className={`p-5 relative cursor-pointer transition-all w-full sm:w-auto ${address.isDefault
                 ? 'bg-[rgb(240,244,239)] dark:bg-zinc-800 border border-[rgb(169,191,162)] dark:border-[rgb(169,191,162)]'
                 : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700'
                 }`}
-            style={{ width: ADDRESS_CARD_WIDTH, minHeight: ADDRESS_CARD_MIN_HEIGHT }}
+            style={{ width: 'auto', maxWidth: '100%', minWidth: '252px', minHeight: ADDRESS_CARD_MIN_HEIGHT }}
         >
             {/* Default Label */}
             {address.isDefault && (

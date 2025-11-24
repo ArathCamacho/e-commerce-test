@@ -43,15 +43,15 @@ export function OrdersList() {
                     className="bg-white dark:bg-zinc-900 w-full"
                     style={{
                         minHeight: '200px',
-                        padding: '18px 19px'
+                        padding: '14px 16px'
                     }}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-base font-normal text-black dark:text-zinc-100">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-5 gap-2 sm:gap-0">
+                        <h3 className="text-sm sm:text-base font-normal text-black dark:text-zinc-100">
                             {order.status}
                         </h3>
-                        <button className="text-base font-light text-black dark:text-zinc-100 hover:underline flex items-center gap-2">
+                        <button className="text-sm sm:text-base font-light text-black dark:text-zinc-100 hover:underline flex items-center gap-2">
                             Detalles del pedido
                             <svg width="8" height="16" viewBox="0 0 8 16" fill="none">
                                 <path d="M1 1L7 8L1 15" stroke="currentColor" strokeWidth="1.5" />
@@ -63,10 +63,10 @@ export function OrdersList() {
                     <div className="w-full h-px bg-gray-300 dark:bg-zinc-700 mb-4" />
 
                     {/* Order Content */}
-                    <div className="flex gap-6">
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                         {/* Product Image */}
                         <div
-                            className="flex-shrink-0 bg-gray-100 dark:bg-zinc-800"
+                            className="flex-shrink-0 bg-gray-100 dark:bg-zinc-800 mx-auto sm:mx-0"
                             style={{ width: '112px', height: '95px' }}
                         >
                             <img
@@ -77,28 +77,28 @@ export function OrdersList() {
                         </div>
 
                         {/* Product Info */}
-                        <div className="flex-1">
-                            <h4 className="text-base font-light text-[rgb(77,76,76)] dark:text-zinc-300 mb-2">
+                        <div className="flex-1 text-center sm:text-left">
+                            <h4 className="text-sm sm:text-base font-light text-[rgb(77,76,76)] dark:text-zinc-300 mb-2">
                                 {order.subtitle}
                             </h4>
-                            <p className="text-base font-light text-[rgb(147,146,146)] dark:text-zinc-500 mb-2">
+                            <p className="text-sm sm:text-base font-light text-[rgb(147,146,146)] dark:text-zinc-500 mb-2">
                                 {order.details}
                             </p>
-                            <p className="text-base font-normal text-black dark:text-zinc-100">
+                            <p className="text-sm sm:text-base font-normal text-black dark:text-zinc-100">
                                 {order.price}
                             </p>
                         </div>
 
                         {/* Price and Actions */}
-                        <div className="flex flex-col items-end justify-between" style={{ minWidth: '200px' }}>
-                            <p className="text-base font-normal text-black dark:text-zinc-100 mb-4 text-center w-[168px]">
+                        <div className="flex flex-col items-center sm:items-end justify-between gap-3 sm:gap-0 w-full sm:w-auto" style={{ minWidth: 'auto', maxWidth: '100%' }}>
+                            <p className="text-sm sm:text-base font-normal text-black dark:text-zinc-100 text-center w-full sm:w-[168px]">
                                 {order.total}
                             </p>
 
-                            <div className="flex flex-col gap-3 w-full items-end">
+                            <div className="flex flex-col gap-3 w-full sm:w-auto items-stretch sm:items-end">
                                 {order.statusKey === 'pending' && (
                                     <button
-                                        className="w-[168px] h-[26px] bg-[rgb(169,191,162)] text-white text-base font-medium hover:bg-[rgb(159,181,152)] transition-colors"
+                                        className="w-full sm:w-[168px] h-[32px] sm:h-[26px] bg-[rgb(169,191,162)] text-white text-sm sm:text-base font-medium hover:bg-[rgb(159,181,152)] transition-colors"
                                     >
                                         Pagar ahora
                                     </button>
@@ -106,14 +106,14 @@ export function OrdersList() {
 
                                 {order.statusKey === 'shipped' && (
                                     <button
-                                        className="w-[168px] h-[26px] bg-[rgb(169,191,162)] text-white text-base font-medium hover:bg-[rgb(159,181,152)] transition-colors"
+                                        className="w-full sm:w-[168px] h-[32px] sm:h-[26px] bg-[rgb(169,191,162)] text-white text-sm sm:text-base font-medium hover:bg-[rgb(159,181,152)] transition-colors"
                                     >
                                         Añadir al carrito
                                     </button>
                                 )}
 
                                 <button
-                                    className="w-[168px] h-[26px] border border-black dark:border-zinc-400 text-black dark:text-zinc-100 text-base font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                                    className="w-full sm:w-[168px] h-[32px] sm:h-[26px] border border-black dark:border-zinc-400 text-black dark:text-zinc-100 text-sm sm:text-base font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
                                 >
                                     Modificar dirección
                                 </button>

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 
-export function AccountSidebar({ activeSection, onSectionChange }) {
+export function AccountSidebar({ activeSection, onSectionChange, isOpen = false, onClose = () => { } }) {
     const navigate = useNavigate()
     const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 })
     const itemsRef = useRef({})
@@ -29,63 +29,95 @@ export function AccountSidebar({ activeSection, onSectionChange }) {
     }, [activeSection])
 
     return (
-        <div className="w-[325px] flex flex-col gap-6 flex-shrink-0 sticky top-6 self-start">
-            {/* Account Navigation Container */}
-            <div className="bg-white dark:bg-zinc-900">
-                {/* Header */}
-                <div className="px-5 pt-6 pb-4">
-                    <h2 className="text-base font-normal text-black dark:text-zinc-100">
-                        Cuenta
-                    </h2>
-                </div>
+        <>
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={onClose}
+                />
+            )}
 
-                {/* Navigation */}
-                <nav className="relative">
-                    {/* Sliding Indicator */}
-                    <div
-                        className="absolute left-0 w-1 bg-[rgb(169,191,162)] z-10 transition-all duration-300 ease-in-out"
-                        style={{
-                            top: `${indicatorStyle.top}px`,
-                            height: `${indicatorStyle.height}px`
-                        }}
-                    />
+            {/* Sidebar */}
+            <div className={`
+                fixed lg:static top-0 left-0 h-full lg:h-auto
+                w-[280px] sm:w-[325px] lg:w-[325px]
+                flex flex-col gap-6 flex-shrink-0
+                lg:sticky lg:top-6 self-start
+                bg-[rgb(245,245,245)] dark:bg-zinc-950 lg:bg-transparent
+                z-50 lg:z-auto
+                transform transition-transform duration-300 ease-in-out
+                ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                overflow-y-auto lg:overflow-visible
+                pt-4 lg:pt-0
+            `}>
+                {/* Mobile Close Button */}
+                <button
+                    onClick={onClose}
+                    className="lg:hidden absolute top-4 right-4 text-black dark:text-zinc-100 p-2"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                </button>
 
-                    {sections.map((section) => (
+                {/* Account Navigation Container */}
+                <div className="bg-white dark:bg-zinc-900 mx-4 lg:mx-0">
+                    {/* Header */}
+                    <div className="px-5 pt-6 pb-4">
+                        <h2 className="text-base font-normal text-black dark:text-zinc-100">
+                            Cuenta
+                        </h2>
+                    </div>
+
+                    {/* Navigation */}
+                    <nav className="relative">
+                        {/* Sliding Indicator */}
                         <div
-                            key={section.id}
-                            ref={el => itemsRef.current[section.id] = el}
-                            className="relative h-[35px]"
-                        >
-                            <button
-                                onClick={() => onSectionChange(section.id)}
-                                className={`w-full h-full text-left px-5 text-base font-light transition-colors ${activeSection === section.id
-                                    ? 'bg-[rgb(245,245,245)] dark:bg-zinc-800 text-[rgb(77,76,76)] dark:text-zinc-300'
-                                    : 'text-[rgb(77,76,76)] dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
-                                    }`}
-                            >
-                                {section.label}
-                            </button>
-                        </div>
-                    ))}
-                </nav>
-            </div>
+                            className="absolute left-0 w-1 bg-[rgb(169,191,162)] z-10 transition-all duration-300 ease-in-out"
+                            style={{
+                                top: `${indicatorStyle.top}px`,
+                                height: `${indicatorStyle.height}px`
+                            }}
+                        />
 
-            {/* QR Code Container */}
-            <div className="bg-white dark:bg-zinc-900 px-5 py-6">
-                <p className="text-base font-light text-black dark:text-zinc-100 text-center mb-2">
-                    Vandentials Mobile App
-                </p>
-                <p className="text-base font-light text-[rgb(77,76,76)] dark:text-zinc-400 text-center mb-4">
-                    Escanea ahora para obtener la app
-                </p>
-                <div className="flex justify-center">
-                    <img
-                        src="https://via.placeholder.com/185x185/E5E7EB/9CA3AF?text=QR+Code"
-                        alt="QR Code"
-                        className="w-[185px] h-[185px]"
-                    />
+                        {sections.map((section) => (
+                            <div
+                                key={section.id}
+                                ref={el => itemsRef.current[section.id] = el}
+                                className="relative h-[35px]"
+                            >
+                                <button
+                                    onClick={() => onSectionChange(section.id)}
+                                    className={`w-full h-full text-left px-5 text-base font-light transition-colors ${activeSection === section.id
+                                        ? 'bg-[rgb(245,245,245)] dark:bg-zinc-800 text-[rgb(77,76,76)] dark:text-zinc-300'
+                                        : 'text-[rgb(77,76,76)] dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                                        }`}
+                                >
+                                    {section.label}
+                                </button>
+                            </div>
+                        ))}
+                    </nav>
+                </div>
+
+                {/* QR Code Container - Hidden on mobile */}
+                <div className="hidden lg:block bg-white dark:bg-zinc-900 px-5 py-6 mx-4 lg:mx-0">
+                    <p className="text-base font-light text-black dark:text-zinc-100 text-center mb-2">
+                        Vandentials Mobile App
+                    </p>
+                    <p className="text-base font-light text-[rgb(77,76,76)] dark:text-zinc-400 text-center mb-4">
+                        Escanea ahora para obtener la app
+                    </p>
+                    <div className="flex justify-center">
+                        <img
+                            src="https://via.placeholder.com/185x185/E5E7EB/9CA3AF?text=QR+Code"
+                            alt="QR Code"
+                            className="w-[185px] h-[185px]"
+                        />
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }
