@@ -10,8 +10,8 @@ from app.models.Pago import (
     PagoSolicitud,
     PagoRespuesta,
     PagoIniciarSchema,
-    PagoSolicitudBancoSchema,
-    PagoRespuestaBancoSchema,
+    BancoSolicitudSchema,
+    BancoRespuestaSchema,
     PagoResponseSchema
 )
 
@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 # 🔧 CONFIGURACIÓN
 # ============================================
 
-# URL del banco (ajustar según confirmación del otro equipo)
 PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"
 
 
@@ -43,7 +42,7 @@ class PagoServices:
         db.commit()
         db.refresh(pago)
         
-        logger.info(f"Pago creado en BD: ID={pago.id_pago}")
+        logger.info(f"✅ Pago creado en BD: ID={pago.id_pago}")
         return pago
     
     
@@ -67,26 +66,26 @@ class PagoServices:
         db.commit()
         db.refresh(solicitud)
         
-        logger.info(f"Solicitud creada: ID={solicitud.id_solicitud}")
+        logger.info(f"📤 Solicitud creada: ID={solicitud.id_solicitud}")
         return solicitud
     
     
     @staticmethod
-    def _guardar_request_json(solicitud: PagoSolicitud, datos: PagoSolicitudBancoSchema, db: Session):
+    def _guardar_request_json(solicitud: PagoSolicitud, datos: BancoSolicitudSchema, db: Session):
         """Guarda el JSON completo de la solicitud para auditoría"""
         request_dict = datos.model_dump()
         solicitud.request_json = json.dumps(request_dict, ensure_ascii=False, indent=2)
         db.commit()
         
-        logger.info(f"Enviando a: {PAGOS_API_URL}")
-        logger.debug(f"Payload: {json.dumps(request_dict, ensure_ascii=False)}")
+        logger.info(f"🌐 Enviando a: {PAGOS_API_URL}")
+        logger.debug(f"📦 Payload: {json.dumps(request_dict, ensure_ascii=False)}")
     
     
     @staticmethod
     def _procesar_respuesta_exitosa(pago: Pago, respuesta: dict, db: Session):
         """Procesa respuesta 200/201 del banco y crea PagoRespuesta"""
         try:
-            banco_resp = PagoRespuestaBancoSchema(**respuesta)
+            banco_resp = BancoRespuestaSchema(**respuesta)
             
             # Crear registro de respuesta
             pago_respuesta = PagoRespuesta(
@@ -111,16 +110,16 @@ class PagoServices:
             
             # Actualizar estado del pago según respuesta del banco
             estado_banco = banco_resp.id_estado_transaccion.upper()
-            if estado_banco in ["APROBADO", "APPROVED", "SUCCESS"]:
+            if estado_banco in ["APROBADO", "APPROVED", "SUCCESS", "EXITOSO"]:
                 pago.estado = "APROBADO"
-            elif estado_banco in ["RECHAZADO", "REJECTED", "DECLINED"]:
+            elif estado_banco in ["RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
                 pago.estado = "RECHAZADO"
             else:
                 pago.estado = estado_banco
             
             db.commit()
             
-            logger.info(f"Pago procesado: {pago.id_pago} - {pago.estado}")
+            logger.info(f"✅ Pago procesado: {pago.id_pago} - {pago.estado}")
             
         except ValueError as e:
             pago.estado = "ERROR"
@@ -135,7 +134,7 @@ class PagoServices:
             db.add(pago_respuesta)
             db.commit()
             
-            logger.error(error_msg)
+            logger.error(f"❌ {error_msg}")
     
     
     @staticmethod
@@ -164,11 +163,11 @@ class PagoServices:
         db.add(pago_respuesta)
         db.commit()
         
-        logger.error(f"Error HTTP {response.status_code}: {error_body}")
+        logger.error(f"❌ Error HTTP {response.status_code}: {error_body}")
     
     
     @staticmethod
-    async def _enviar_solicitud_banco(datos: PagoSolicitudBancoSchema) -> httpx.Response:
+    async def _enviar_solicitud_banco(datos: BancoSolicitudSchema) -> httpx.Response:
         """Envía la solicitud HTTP al banco"""
         request_dict = datos.model_dump()
         
@@ -179,7 +178,7 @@ class PagoServices:
                 headers={"Content-Type": "application/json"}
             )
         
-        logger.info(f"Respuesta del banco: {response.status_code}")
+        logger.info(f"📥 Respuesta del banco: {response.status_code}")
         return response
     
     
@@ -203,7 +202,7 @@ class PagoServices:
             PagoResponseSchema con el resultado del pago
         """
         
-        logger.info(f"Iniciando pago: ${datos.monto} {datos.moneda}")
+        logger.info(f"💳 Iniciando pago: ${datos.monto} {datos.moneda}")
         
         # Validar pedido si viene
         if datos.id_pedido:
@@ -223,7 +222,7 @@ class PagoServices:
         
         try:
             # PASO 3: Preparar datos para el banco
-            datos_banco = PagoSolicitudBancoSchema(
+            datos_banco = BancoSolicitudSchema(
                 id_tarjeta_origen=datos.numero_tarjeta_origen,
                 id_tarjeta_destino=datos.numero_tarjeta_destino,
                 nombre=datos.nombre_cliente,
@@ -276,7 +275,7 @@ class PagoServices:
             )
             db.add(pago_respuesta)
             db.commit()
-            logger.error(f"Timeout: {str(e)}")
+            logger.error(f"⏱️ Timeout: {str(e)}")
             raise HTTPException(status_code=504, detail="Timeout: El banco no respondió")
             
         except httpx.RequestError as e:
@@ -288,7 +287,7 @@ class PagoServices:
             )
             db.add(pago_respuesta)
             db.commit()
-            logger.error(f"Error de conexión: {str(e)}")
+            logger.error(f"🔌 Error de conexión: {str(e)}")
             raise HTTPException(status_code=503, detail=f"Error de conexión: {str(e)}")
             
         except Exception as e:
@@ -300,7 +299,7 @@ class PagoServices:
             )
             db.add(pago_respuesta)
             db.commit()
-            logger.exception("Error inesperado")
+            logger.exception("💥 Error inesperado")
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
     
     

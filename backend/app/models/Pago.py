@@ -17,12 +17,12 @@ class Pago(Base):
     """
     __tablename__ = "pago"
     
-    id_pago = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_pago = Column(Integer, primary_key=True, index=True)
     id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
     
     monto = Column(Float, nullable=False)
-    moneda = Column(String(10), default="MXN")
-    estado = Column(String(50), default="PENDIENTE")  # PENDIENTE, APROBADO, RECHAZADO, ERROR
+    moneda = Column(String(50), default="MXN")
+    estado = Column(String(50), default="PENDIENTE")
     metodo = Column(String(50), default="tarjeta")
     fecha = Column(DateTime, default=datetime.utcnow)
     
@@ -40,7 +40,7 @@ class PagoSolicitud(Base):
     """
     __tablename__ = "pago_solicitud"
     
-    id_solicitud = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_solicitud = Column(Integer, primary_key=True, index=True)
     id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False, unique=True)
     
     # DATOS_TRANS - Lo que envías al banco
@@ -51,8 +51,8 @@ class PagoSolicitud(Base):
     anio_exp = Column(Integer, nullable=False)
     cvv = Column(String(4), nullable=False)
     monto = Column(Float, nullable=False)
-    moneda = Column(String(10), default="MXN")
-    tipo = Column(String(50), default="venta")  # venta, transferencia, etc.
+    moneda = Column(String(50), default="MXN")
+    tipo = Column(String(50), default="venta")
     
     # Metadata
     creada_utc = Column(DateTime, default=datetime.utcnow)
@@ -70,7 +70,7 @@ class PagoRespuesta(Base):
     """
     __tablename__ = "pago_respuesta"
     
-    id_respuesta = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_respuesta = Column(Integer, primary_key=True, index=True)
     id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False, unique=True)
     
     # EDO_TRANS - Lo que el banco responde
@@ -78,10 +78,10 @@ class PagoRespuesta(Base):
     id_transaccion = Column(String(100), nullable=True)
     tipo_transaccion = Column(String(50), nullable=True)
     monto_transaccion = Column(Float, nullable=True)
-    numero_tarjeta = Column(String(20), nullable=True)  # Últimos 4 dígitos
-    nombre_estado = Column(String(50), nullable=True)  # APROBADO, RECHAZADO, etc.
-    firma = Column(Text, nullable=True)
-    mensaje = Column(Text, nullable=True)
+    numero_tarjeta = Column(String(20), nullable=True)
+    nombre_estado = Column(String(50), nullable=True)
+    firma = Column(String(500), nullable=True)
+    mensaje = Column(String(500), nullable=True)
     
     # Metadata
     fecha_registro = Column(DateTime, default=datetime.utcnow)
@@ -98,7 +98,7 @@ class PagoRespuesta(Base):
 class PagoIniciarSchema(BaseModel):
     """Lo que el frontend te envía para iniciar el pago"""
     numero_tarjeta_origen: str
-    numero_tarjeta_destino: str  # ← OBLIGATORIO (sin Optional)
+    numero_tarjeta_destino: str
     nombre_cliente: str
     mes_exp: int
     anio_exp: int
@@ -111,12 +111,12 @@ class PagoIniciarSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "numero_tarjeta_origen": "1234567890123456",
-                "numero_tarjeta_destino": "9876543210987654",
-                "nombre_cliente": "Juan Perez",
+                "numero_tarjeta_origen": "5555555555554444",
+                "numero_tarjeta_destino": "4111111111111111",
+                "nombre_cliente": "Juan Pérez",
                 "mes_exp": 12,
-                "anio_exp": 2027,
-                "cvv": "123",
+                "anio_exp": 2030,
+                "cvv": "456",
                 "monto": 199.99,
                 "moneda": "MXN",
                 "tipo": "venta",
@@ -125,7 +125,7 @@ class PagoIniciarSchema(BaseModel):
         }
 
 
-class PagoSolicitudBancoSchema(BaseModel):
+class BancoSolicitudSchema(BaseModel):
     """Lo que TÚ envías al banco (DATOS_TRANS)"""
     id_tarjeta_origen: str
     id_tarjeta_destino: str
@@ -138,14 +138,14 @@ class PagoSolicitudBancoSchema(BaseModel):
     tipo: str = "venta"
 
 
-class PagoRespuestaBancoSchema(BaseModel):
+class BancoRespuestaSchema(BaseModel):
     """Lo que EL BANCO te regresa (EDO_TRANS)"""
     creada_utc: str
     id_transaccion: str
     tipo: str
     monto: float
     numero_tarjeta: str
-    id_estado_transaccion: str  # APROBADO, RECHAZADO, etc.
+    id_estado_transaccion: str
     firma: str
     mensaje: Optional[str] = None
 

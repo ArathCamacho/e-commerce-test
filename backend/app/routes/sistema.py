@@ -125,32 +125,16 @@ async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db))
     
     Body:
     {
-        "numero_tarjeta_origen": "1234567890123456",
-        "numero_tarjeta_destino": "9876543210987654",
-        "nombre_cliente": "Juan Perez",
+        "numero_tarjeta_origen": "5555555555554444",
+        "numero_tarjeta_destino": "4111111111111111",
+        "nombre_cliente": "Juan Pérez",
         "mes_exp": 12,
-        "anio_exp": 2027,
-        "cvv": "123",
+        "anio_exp": 2030,
+        "cvv": "456",
         "monto": 199.99,
         "moneda": "MXN",
         "tipo": "venta",
         "id_pedido": 1
-    }
-    
-    Respuesta:
-    {
-        "id_pago": 1,
-        "id_pedido": 1,
-        "monto": 199.99,
-        "moneda": "MXN",
-        "estado": "APROBADO",
-        "metodo": "tarjeta",
-        "fecha": "2025-11-24T10:30:00",
-        "numero_tarjeta_origen": "1234567890123456",
-        "nombre_cliente": "Juan Perez",
-        "id_transaccion": "TXN-ABC123",
-        "nombre_estado": "APROBADO",
-        "mensaje": "Transacción exitosa"
     }
     """
     return await PagoServices.procesar_pago(db, datos)
@@ -174,8 +158,6 @@ async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_d
     Ejemplo: GET /api/pagos/pedido/1
     """
     return PagoServices.consultar_pagos_por_pedido(db, id_pedido)
-
-
 # ============================================
 # ENDPOINTS DE ENVÍOS
 # ============================================
