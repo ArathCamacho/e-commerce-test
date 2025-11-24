@@ -242,6 +242,25 @@ async def consultar_envio_por_pedido(id_pedido: int, db: Session = Depends(get_d
     return EnvioServices.consultar_envio_por_pedido(db, id_pedido)
 
 
+@router.post("/envios/webhook")
+async def recibir_actualizacion_envio(datos: dict, db: Session = Depends(get_db)):
+    """
+    🔔 WEBHOOK - Recibe actualizaciones del sistema de envíos
+    
+    Este endpoint lo llama el OTRO EQUIPO cuando hay cambios en el envío.
+    
+    Body esperado:
+    {
+        "id_orden_externa": "003",
+        "codigo_seguimiento": "ENV-123",
+        "estado_actual": "EN_TRANSITO",
+        "ubicacion_actual": "Guadalajara",
+        "fecha_actualizacion": "2025-11-23T10:30:00Z"
+    }
+    """
+    return EnvioServices.actualizar_estado_webhook(db, datos)
+
+
 # ============================================
 # ENDPOINTS DE VENTAS EXTERNAS
 # ============================================

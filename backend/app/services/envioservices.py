@@ -134,11 +134,22 @@ class EnvioServices:
             EnvioResponseSchema con el estado del envío
         """
         
-        # Validación
+        # Validación de productos
         if not datos.productos or len(datos.productos) == 0:
             raise HTTPException(
                 status_code=400,
                 detail="Debe incluir al menos un producto"
+            )
+        
+        # Validación de duplicados
+        envio_existente = db.query(Envio).filter(
+            Envio.id_orden_externa == datos.id_orden_externa
+        ).first()
+        
+        if envio_existente:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ya existe un envío con id_orden_externa: {datos.id_orden_externa}"
             )
         
         logger.info(f"Iniciando envío: {datos.id_orden_externa}")
@@ -210,4 +221,67 @@ class EnvioServices:
                 status_code=404, 
                 detail=f"No hay envío para el pedido {id_pedido}"
             )
+        return EnvioResponseSchema.model_validate(envio)
+    
+    
+    @staticmethod
+    def actualizar_estado_webhook(db: Session, datos: dict) -> EnvioResponseSchema:
+        """
+        🔔 WEBHOOK: Recibir actualizaciones del sistema de envíos
+        
+        El sistema de envíos llama este método cuando hay cambios.
+        """
+        logger.info(f"Webhook recibido: {datos}")
+        
+        id_orden_externa = datos.get("id_orden_externa")
+        if not id_orden_externa:
+            raise HTTPException(
+                status_code=400,
+                detail="Falta id_orden_externa en el webhook"
+            )
+        
+        # Buscar el envío
+        envio = db.query(Envio).filter(
+            Envio.id_orden_externa == id_orden_externa
+        ).first()
+        
+        if not envio:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontró envío con id_orden_externa: {id_orden_externa}"
+            )
+        
+        # Actualizar datos
+        envio.codigo_seguimiento = datos.get("codigo_seguimiento", envio.codigo_seguimiento)
+        envio.estado_actual = datos.get("estado_actual", envio.estado_actual)
+        envio.ubicacion_actual = datos.get("ubicacion_actual", envio.ubicacion_actual)
+        
+        # Actualizar fecha
+        fecha_str = datos.get("fecha_actualizacion")
+        if fecha_str:
+            if fecha_str.endswith('Z'):
+                fecha_str = fecha_str.replace('Z', '+00:00')
+            envio.fecha_actualizacion = datetime.fromisoformat(fecha_str)
+        
+        # Guardar historial en response_json
+        try:
+            actualizaciones = json.loads(envio.response_json) if envio.response_json else {}
+        except:
+            actualizaciones = {}
+        
+        if "historial_webhooks" not in actualizaciones:
+            actualizaciones["historial_webhooks"] = []
+        
+        actualizaciones["historial_webhooks"].append({
+            "fecha": datetime.utcnow().isoformat(),
+            "datos": datos
+        })
+        
+        envio.response_json = json.dumps(actualizaciones, ensure_ascii=False, indent=2)
+        
+        db.commit()
+        db.refresh(envio)
+        
+        logger.info(f"Envío actualizado: {envio.id_envio} - {envio.estado_actual}")
+        
         return EnvioResponseSchema.model_validate(envio)
