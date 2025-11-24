@@ -1,13 +1,17 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Hombre() {
-    const products = Array(12).fill({
+
+    // Productos de ejemplo con ID
+    const products = Array.from({ length: 12 }).map((_, i) => ({
+        id: i + 1,
         name: "Asset",
         price: "$00.00",
         description: "Descripción",
         img: "/placeholder.jpg",
         tag: "Nuevo"
-    });
+    }));
 
     const [openSort, setOpenSort] = useState(false);
 
@@ -21,17 +25,14 @@ export default function Hombre() {
                 <div className="mb-6">
                     <h3 className="font-semibold mb-2">Categorías</h3>
                     <ul className="text-sm text-gray-700 space-y-1">
-                        <li className="cursor-pointer hover:text-black">Calzado</li>
-                        <li className="cursor-pointer hover:text-black">Playeras y tops</li>
+                        <li className="cursor-pointer hover:text-black">Tenis</li>
+                        <li className="cursor-pointer hover:text-black">Playeras</li>
+                        <li className="cursor-pointer hover:text-black">Hoodies</li>
+                        <li className="cursor-pointer hover:text-black">Pants</li>
+                        <li className="cursor-pointer hover:text-black">Pantalones</li>
+                        <li className="cursor-pointer hover:text-black">Chamarras</li>
                         <li className="cursor-pointer hover:text-black">Shorts</li>
-                        <li className="cursor-pointer hover:text-black">Sudaderas con y sin gorro</li>
-                        <li className="cursor-pointer hover:text-black">Pants y tights</li>
-                        <li className="cursor-pointer hover:text-black">Chamarras y chalecos</li>
-                        <li className="cursor-pointer hover:text-black">Ropa interior deportiva</li>
-                        <li className="cursor-pointer hover:text-black">Conjuntos</li>
-                        <li className="cursor-pointer hover:text-black">Surf y trajes de baño</li>
-                        <li className="cursor-pointer hover:text-black">Calcetines</li>
-                        <li className="cursor-pointer hover:text-black">Accesorios y equipo</li>
+                        <li className="cursor-pointer hover:text-black">Accesorios</li>
                     </ul>
                 </div>
 
@@ -83,15 +84,16 @@ export default function Hombre() {
 
                 {/* GRID DE PRODUCTOS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {products.map((p, i) => (
-                        <div
-                            key={i}
-                            className="group border rounded-lg overflow-hidden hover:shadow-md transition cursor-pointer"
+                    {products.map((p) => (
+                        <Link
+                            to={`/producto/${p.id}`}
+                            key={p.id}
+                            className="group border rounded-lg overflow-hidden hover:shadow-md transition block cursor-pointer"
                         >
                             <div className="relative">
                                 <img
                                     src={p.img}
-                                    alt=""
+                                    alt={p.name}
                                     className="w-full h-60 object-cover"
                                 />
 
@@ -105,7 +107,7 @@ export default function Hombre() {
                                 <p className="text-xs text-gray-500">{p.description}</p>
                                 <p className="mt-1 font-semibold">{p.price}</p>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </main>

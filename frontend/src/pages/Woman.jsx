@@ -1,13 +1,17 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom"; // 🔥 AGREGADO
 
 export default function Hombre() {
-    const products = Array(12).fill({
+
+    // 🔥 AGREGAMOS IDs SIN CAMBIAR TUS DATOS
+    const products = Array.from({ length: 12 }).map((_, i) => ({
+        id: i + 1,
         name: "Asset",
         price: "$00.00",
         description: "Descripción",
         img: "/placeholder.jpg",
         tag: "Nuevo"
-    });
+    }));
 
     const [openSort, setOpenSort] = useState(false);
 
@@ -83,10 +87,13 @@ export default function Hombre() {
 
                 {/* GRID DE PRODUCTOS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                    
                     {products.map((p, i) => (
-                        <div
-                            key={i}
-                            className="group border rounded-lg overflow-hidden hover:shadow-md transition cursor-pointer"
+
+                        <Link 
+                            to={`/producto/${p.id}`}  // 🔥 AGREGA NAVEGACIÓN
+                            key={p.id}
+                            className="group border rounded-lg overflow-hidden hover:shadow-md transition cursor-pointer block"
                         >
                             <div className="relative">
                                 <img
@@ -105,8 +112,10 @@ export default function Hombre() {
                                 <p className="text-xs text-gray-500">{p.description}</p>
                                 <p className="mt-1 font-semibold">{p.price}</p>
                             </div>
-                        </div>
+                        </Link>
+
                     ))}
+
                 </div>
             </main>
         </div>

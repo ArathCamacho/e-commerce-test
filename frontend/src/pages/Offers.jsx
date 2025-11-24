@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Ofertas() {
 
@@ -57,7 +58,8 @@ export default function Ofertas() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-8">
 
                 {ofertas.map((p, i) => (
-                    <div
+                    <Link 
+                        to={`/producto/${i}`} 
                         key={i}
                         className="cursor-pointer group"
                     >
@@ -79,7 +81,7 @@ export default function Ofertas() {
                             <span className="font-semibold text-black">{p.price}</span>
                             <span className="text-gray-400 line-through text-sm">{p.before}</span>
                         </div>
-                    </div>
+                    </Link>
                 ))}
 
             </div>

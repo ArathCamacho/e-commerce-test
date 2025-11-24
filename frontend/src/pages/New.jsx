@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Novedades() {
 
@@ -38,11 +39,15 @@ export default function Novedades() {
             {/* TÍTULO */}
             <h1 className="text-3xl font-semibold mb-8">Novedades</h1>
 
-            {/* PRODUCTOS DESTACADOS (3 GRANDES COMO NIKE) */}
+            {/* PRODUCTOS DESTACADOS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
 
                 {destacados.map((p, i) => (
-                    <div key={i} className="cursor-pointer">
+                    <Link 
+                        to={`/producto/${i}`} 
+                        key={i} 
+                        className="cursor-pointer"
+                    >
                         <img
                             src={p.img}
                             alt={p.name}
@@ -52,7 +57,7 @@ export default function Novedades() {
                         <h3 className="mt-3 text-sm font-medium">{p.name}</h3>
                         <p className="text-xs text-gray-600">{p.desc}</p>
                         <p className="font-semibold mt-1">{p.price}</p>
-                    </div>
+                    </Link>
                 ))}
 
             </div>
@@ -64,7 +69,8 @@ export default function Novedades() {
             <div className="flex gap-6 overflow-x-auto pb-4">
 
                 {iconos.map((i, idx) => (
-                    <div
+                    <Link
+                        to={`/producto/${idx}`}
                         key={idx}
                         className="min-w-[220px] cursor-pointer"
                     >
@@ -79,10 +85,11 @@ export default function Novedades() {
                         <p className="mt-2 text-center text-sm font-medium">
                             {i.name}
                         </p>
-                    </div>
+                    </Link>
                 ))}
 
             </div>
+
         </div>
     );
 }

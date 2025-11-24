@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Hombre() {
     const products = Array(12).fill({
@@ -84,7 +85,8 @@ export default function Hombre() {
                 {/* GRID DE PRODUCTOS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                     {products.map((p, i) => (
-                        <div
+                        <Link
+                            to={`/producto/${i}`}
                             key={i}
                             className="group border rounded-lg overflow-hidden hover:shadow-md transition cursor-pointer"
                         >
@@ -105,7 +107,7 @@ export default function Hombre() {
                                 <p className="text-xs text-gray-500">{p.description}</p>
                                 <p className="mt-1 font-semibold">{p.price}</p>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </main>
