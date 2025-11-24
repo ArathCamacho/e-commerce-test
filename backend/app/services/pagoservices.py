@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 # 🔧 CONFIGURACIÓN
 # ============================================
 
-PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"
+# ⚠️ ACTUALIZA ESTA URL CON LA CORRECTA DEL BANCO
+PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"  
 
 
 class PagoServices:
@@ -71,14 +72,13 @@ class PagoServices:
     
     
     @staticmethod
-    def _guardar_request_json(solicitud: PagoSolicitud, datos: BancoSolicitudSchema, db: Session):
+    def _guardar_request_json(solicitud: PagoSolicitud, datos_dict: dict, db: Session):
         """Guarda el JSON completo de la solicitud para auditoría"""
-        request_dict = datos.model_dump()
-        solicitud.request_json = json.dumps(request_dict, ensure_ascii=False, indent=2)
+        solicitud.request_json = json.dumps(datos_dict, ensure_ascii=False, indent=2)
         db.commit()
         
         logger.info(f"🌐 Enviando a: {PAGOS_API_URL}")
-        logger.debug(f"📦 Payload: {json.dumps(request_dict, ensure_ascii=False)}")
+        logger.debug(f"📦 Payload: {json.dumps(datos_dict, ensure_ascii=False)}")
     
     
     @staticmethod
@@ -91,17 +91,17 @@ class PagoServices:
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 id_transaccion=banco_resp.id_transaccion,
-                tipo_transaccion=banco_resp.tipo,
-                monto_transaccion=banco_resp.monto,
-                numero_tarjeta=banco_resp.numero_tarjeta,
-                nombre_estado=banco_resp.id_estado_transaccion,
-                firma=banco_resp.firma,
-                mensaje=banco_resp.mensaje,
+                tipo_transaccion=banco_resp.TipoTransaccion,
+                monto_transaccion=banco_resp.MontoTransaccion,
+                numero_tarjeta=banco_resp.NumeroTarjeta,
+                nombre_estado=banco_resp.NombreEstado,
+                firma=banco_resp.Firma,
+                mensaje=banco_resp.Mensaje,
                 response_json=json.dumps(respuesta, ensure_ascii=False, indent=2)
             )
             
-            # Parsear fecha
-            fecha_str = banco_resp.creada_utc
+            # Parsear fecha (formato ISO 8601 con Z)
+            fecha_str = banco_resp.CreadaUTC
             if fecha_str.endswith('Z'):
                 fecha_str = fecha_str.replace('Z', '+00:00')
             pago_respuesta.creada_utc = datetime.fromisoformat(fecha_str)
@@ -109,10 +109,12 @@ class PagoServices:
             db.add(pago_respuesta)
             
             # Actualizar estado del pago según respuesta del banco
-            estado_banco = banco_resp.id_estado_transaccion.upper()
-            if estado_banco in ["APROBADO", "APPROVED", "SUCCESS", "EXITOSO"]:
+            estado_banco = banco_resp.NombreEstado.upper()
+            
+            # Estados posibles del banco según tu ejemplo
+            if estado_banco in ["ACEPTADA", "APROBADA", "APPROVED", "SUCCESS", "EXITOSO"]:
                 pago.estado = "APROBADO"
-            elif estado_banco in ["RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
+            elif estado_banco in ["RECHAZADA", "RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
                 pago.estado = "RECHAZADO"
             else:
                 pago.estado = estado_banco
@@ -120,6 +122,7 @@ class PagoServices:
             db.commit()
             
             logger.info(f"✅ Pago procesado: {pago.id_pago} - {pago.estado}")
+            logger.info(f"💰 Transacción: {banco_resp.id_transaccion}")
             
         except ValueError as e:
             pago.estado = "ERROR"
@@ -167,14 +170,13 @@ class PagoServices:
     
     
     @staticmethod
-    async def _enviar_solicitud_banco(datos: BancoSolicitudSchema) -> httpx.Response:
+    async def _enviar_solicitud_banco(datos_dict: dict) -> httpx.Response:
         """Envía la solicitud HTTP al banco"""
-        request_dict = datos.model_dump()
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 PAGOS_API_URL,
-                json=request_dict,
+                json=datos_dict,
                 headers={"Content-Type": "application/json"}
             )
         
@@ -190,9 +192,10 @@ class PagoServices:
         Flujo completo:
         1. Crea registro de pago (PENDIENTE)
         2. Crea solicitud con datos enviados
-        3. Envía POST al banco
-        4. Crea respuesta con lo que el banco regresa
-        5. Actualiza estado del pago
+        3. Convierte a formato PascalCase para el banco
+        4. Envía POST al banco
+        5. Crea respuesta con lo que el banco regresa
+        6. Actualiza estado del pago
         
         Args:
             db: Sesión de base de datos
@@ -221,23 +224,33 @@ class PagoServices:
         solicitud = PagoServices._crear_solicitud(db, pago, datos)
         
         try:
-            # PASO 3: Preparar datos para el banco
+            # PASO 3: Preparar datos para el banco en formato PascalCase
             datos_banco = BancoSolicitudSchema(
-                id_tarjeta_origen=datos.numero_tarjeta_origen,
-                id_tarjeta_destino=datos.numero_tarjeta_destino,
-                nombre=datos.nombre_cliente,
+                numero_tarjeta_origen=datos.numero_tarjeta_origen,
+                numero_tarjeta_destino=datos.numero_tarjeta_destino,
+                nombre_cliente=datos.nombre_cliente,
                 mes_exp=datos.mes_exp,
                 anio_exp=datos.anio_exp,
                 cvv=datos.cvv,
                 monto=datos.monto
-                # Quitar moneda y tipo si no los requiere
             )
             
+            # Convertir a diccionario con PascalCase para enviar
+            datos_dict = {
+                "NumeroTarjetaOrigen": datos.numero_tarjeta_origen,
+                "NumeroTarjetaDestino": datos.numero_tarjeta_destino,
+                "NombreCliente": datos.nombre_cliente,
+                "MesExp": datos.mes_exp,
+                "AnioExp": datos.anio_exp,
+                "Cvv": datos.cvv,
+                "Monto": datos.monto
+            }
+            
             # Guardar request JSON
-            PagoServices._guardar_request_json(solicitud, datos_banco, db)
+            PagoServices._guardar_request_json(solicitud, datos_dict, db)
             
             # PASO 4: Enviar al banco
-            response = await PagoServices._enviar_solicitud_banco(datos_banco)
+            response = await PagoServices._enviar_solicitud_banco(datos_dict)
             
             # PASO 5: Procesar respuesta
             if response.status_code in [200, 201]:

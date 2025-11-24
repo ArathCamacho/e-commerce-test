@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Float
 from sqlalchemy.orm import relationship
 from database import Base
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
@@ -111,12 +111,12 @@ class PagoIniciarSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "numero_tarjeta_origen": "5555555555554444",
-                "numero_tarjeta_destino": "4111111111111111",
-                "nombre_cliente": "Juan Pérez",
+                "numero_tarjeta_origen": "4141414141414141",
+                "numero_tarjeta_destino": "5555555555554444",
+                "nombre_cliente": "Arath Camacho",
                 "mes_exp": 12,
-                "anio_exp": 2030,
-                "cvv": "456",
+                "anio_exp": 2028,
+                "cvv": "123",
                 "monto": 199.99,
                 "moneda": "MXN",
                 "tipo": "venta",
@@ -126,29 +126,36 @@ class PagoIniciarSchema(BaseModel):
 
 
 class BancoSolicitudSchema(BaseModel):
-    """Lo que TÚ envías al banco (DATOS_TRANS)"""
-    id_tarjeta_origen: str
-    id_tarjeta_destino: str
-    nombre: str
-    mes_exp: int
-    anio_exp: int
-    cvv: str
-    monto: float
-    # Eliminar estos campos si el banco no los requiere:
-    # moneda: str = "MXN"  # ← QUITAR
-    # tipo: str = "venta"   # ← QUITAR
+    """
+    Lo que TÚ envías al banco (FORMATO PASCALCASE)
+    ⚠️ IMPORTANTE: El banco usa PascalCase, no snake_case
+    """
+    NumeroTarjetaOrigen: str = Field(alias="numero_tarjeta_origen")
+    NumeroTarjetaDestino: str = Field(alias="numero_tarjeta_destino")
+    NombreCliente: str = Field(alias="nombre_cliente")
+    MesExp: int = Field(alias="mes_exp")
+    AnioExp: int = Field(alias="anio_exp")
+    Cvv: str = Field(alias="cvv")
+    Monto: float = Field(alias="monto")
+    
+    class Config:
+        populate_by_name = True
 
 
 class BancoRespuestaSchema(BaseModel):
-    """Lo que EL BANCO te regresa (EDO_TRANS)"""
-    creada_utc: str
+    """
+    Lo que EL BANCO te regresa (FORMATO PASCALCASE)
+    """
+    CreadaUTC: str
     id_transaccion: str
-    tipo: str
-    monto: float
-    numero_tarjeta: str
-    id_estado_transaccion: str
-    firma: str
-    mensaje: Optional[str] = None
+    TipoTransaccion: str
+    MontoTransaccion: float
+    MarcaTarjeta: Optional[str] = None
+    NumeroTarjeta: str
+    NumeroAutorizacion: Optional[str] = None
+    NombreEstado: str
+    Firma: str
+    Mensaje: Optional[str] = None
 
 
 class PagoResponseSchema(BaseModel):
