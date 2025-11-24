@@ -121,18 +121,36 @@ async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
 @router.post("/pagos/procesar", response_model=PagoResponseSchema)
 async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db)):
     """
-    💳 Procesar pago con banco
+    💳 PROCESAR PAGO CON EL BANCO
     
     Body:
     {
-        "numero_tarjeta_origen": "1234 5678 9012 3456",
+        "numero_tarjeta_origen": "1234567890123456",
+        "numero_tarjeta_destino": "9876543210987654",
         "nombre_cliente": "Juan Perez",
         "mes_exp": 12,
         "anio_exp": 2027,
         "cvv": "123",
         "monto": 199.99,
         "moneda": "MXN",
+        "tipo": "venta",
         "id_pedido": 1
+    }
+    
+    Respuesta:
+    {
+        "id_pago": 1,
+        "id_pedido": 1,
+        "monto": 199.99,
+        "moneda": "MXN",
+        "estado": "APROBADO",
+        "metodo": "tarjeta",
+        "fecha": "2025-11-24T10:30:00",
+        "numero_tarjeta_origen": "1234567890123456",
+        "nombre_cliente": "Juan Perez",
+        "id_transaccion": "TXN-ABC123",
+        "nombre_estado": "APROBADO",
+        "mensaje": "Transacción exitosa"
     }
     """
     return await PagoServices.procesar_pago(db, datos)
@@ -141,7 +159,7 @@ async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db))
 @router.get("/pagos/{id_pago}", response_model=PagoResponseSchema)
 async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
     """
-    🔍 Consultar estado de un pago por ID
+    🔍 CONSULTAR ESTADO DE UN PAGO
     
     Ejemplo: GET /api/pagos/1
     """
@@ -151,7 +169,7 @@ async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
 @router.get("/pagos/pedido/{id_pedido}", response_model=List[PagoResponseSchema])
 async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_db)):
     """
-    🔍 Consultar todos los pagos de un pedido
+    🔍 CONSULTAR TODOS LOS PAGOS DE UN PEDIDO
     
     Ejemplo: GET /api/pagos/pedido/1
     """
