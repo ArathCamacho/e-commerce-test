@@ -91,17 +91,17 @@ class PagoServices:
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 id_transaccion=banco_resp.id_transaccion,
-                tipo_transaccion=banco_resp.tipo,
-                monto_transaccion=banco_resp.monto,
-                numero_tarjeta=banco_resp.numero_tarjeta,
-                nombre_estado=banco_resp.id_estado_transaccion,
-                firma=banco_resp.firma,
-                mensaje=banco_resp.mensaje,
+                tipo_transaccion=banco_resp.TipoTransaccion,
+                monto_transaccion=banco_resp.MontoTransaccion,
+                numero_tarjeta=banco_resp.NumeroTarjeta,
+                nombre_estado=banco_resp.NombreEstado,
+                firma=banco_resp.Firma,
+                mensaje=banco_resp.Mensaje,
                 response_json=json.dumps(respuesta, ensure_ascii=False, indent=2)
             )
             
             # Parsear fecha
-            fecha_str = banco_resp.creada_utc
+            fecha_str = banco_resp.CreadaUTC
             if fecha_str.endswith('Z'):
                 fecha_str = fecha_str.replace('Z', '+00:00')
             pago_respuesta.creada_utc = datetime.fromisoformat(fecha_str)
@@ -109,10 +109,10 @@ class PagoServices:
             db.add(pago_respuesta)
             
             # Actualizar estado del pago según respuesta del banco
-            estado_banco = banco_resp.id_estado_transaccion.upper()
-            if estado_banco in ["APROBADO", "APPROVED", "SUCCESS", "EXITOSO"]:
+            estado_banco = banco_resp.NombreEstado.upper()
+            if estado_banco in ["ACEPTADA", "APROBADO", "APPROVED", "SUCCESS", "EXITOSO"]:
                 pago.estado = "APROBADO"
-            elif estado_banco in ["RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
+            elif estado_banco in ["RECHAZADA", "RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
                 pago.estado = "RECHAZADO"
             else:
                 pago.estado = estado_banco
@@ -221,16 +221,15 @@ class PagoServices:
         solicitud = PagoServices._crear_solicitud(db, pago, datos)
         
         try:
-            # PASO 3: Preparar datos para el banco
+            # PASO 3: Preparar datos para el banco (PASCALCASE)
             datos_banco = BancoSolicitudSchema(
-                id_tarjeta_origen=datos.numero_tarjeta_origen,
-                id_tarjeta_destino=datos.numero_tarjeta_destino,
-                nombre=datos.nombre_cliente,
-                mes_exp=datos.mes_exp,
-                anio_exp=datos.anio_exp,
-                cvv=datos.cvv,
-                monto=datos.monto
-                # Quitar moneda y tipo si no los requiere
+                NumeroTarjetaOrigen=datos.numero_tarjeta_origen,
+                NumeroTarjetaDestino=datos.numero_tarjeta_destino,
+                NombreCliente=datos.nombre_cliente,
+                MesExp=datos.mes_exp,
+                AnioExp=datos.anio_exp,
+                Cvv=datos.cvv,
+                Monto=datos.monto
             )
             
             # Guardar request JSON

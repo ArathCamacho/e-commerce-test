@@ -111,44 +111,44 @@ class PagoIniciarSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "numero_tarjeta_origen": "5555555555554444",
-                "numero_tarjeta_destino": "4111111111111111",
+                "numero_tarjeta_origen": "4111111111111111",
+                "numero_tarjeta_destino": "5555555555554444",
                 "nombre_cliente": "Juan Pérez",
                 "mes_exp": 12,
                 "anio_exp": 2030,
-                "cvv": "456",
-                "monto": 199.99,
+                "cvv": "123",
+                "monto": 1500.25,
                 "moneda": "MXN",
-                "tipo": "venta",
-                "id_pedido": 1
+                "tipo": "venta"
             }
         }
 
 
 class BancoSolicitudSchema(BaseModel):
-    """Lo que TÚ envías al banco (DATOS_TRANS)"""
-    id_tarjeta_origen: str
-    id_tarjeta_destino: str
-    nombre: str
-    mes_exp: int
-    anio_exp: int
-    cvv: str
-    monto: float
-    # Eliminar estos campos si el banco no los requiere:
-    # moneda: str = "MXN"  # ← QUITAR
-    # tipo: str = "venta"   # ← QUITAR
+    """Lo que TÚ envías al banco - PASCALCASE"""
+    NumeroTarjetaOrigen: str
+    NumeroTarjetaDestino: str
+    NombreCliente: str
+    MesExp: int
+    AnioExp: int
+    Cvv: str
+    Monto: float
 
 
 class BancoRespuestaSchema(BaseModel):
-    """Lo que EL BANCO te regresa (EDO_TRANS)"""
-    creada_utc: str
+    """Lo que EL BANCO te regresa - PASCALCASE"""
+    CreadaUTC: str
     id_transaccion: str
-    tipo: str
-    monto: float
-    numero_tarjeta: str
-    id_estado_transaccion: str
-    firma: str
-    mensaje: Optional[str] = None
+    TipoTransaccion: str
+    MontoTransaccion: float
+    NumeroTarjeta: str
+    NombreEstado: str
+    Firma: str
+    Mensaje: Optional[str] = None
+    
+    # Campos opcionales que pueden venir
+    MarcaTarjeta: Optional[str] = None
+    NumeroAutorizacion: Optional[str] = None
 
 
 class PagoResponseSchema(BaseModel):
