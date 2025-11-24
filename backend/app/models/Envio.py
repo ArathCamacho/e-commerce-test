@@ -19,27 +19,26 @@ class Envio(Base):
     
     id_envio = Column(Integer, primary_key=True, index=True, autoincrement=True)
     
-    # ✅ CAMBIO: id_pedido ahora es OPCIONAL (nullable=True)
-    # Esto permite crear envíos sin necesidad de tener un pedido en la BD
+    # ✅ id_pedido es OPCIONAL (nullable=True)
     id_pedido = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
     
     # SOLICITUD - Lo que enviaste
-    id_orden_externa = Column(String(100), nullable=False, unique=True)  # Tu ID único
-    id_orden_original = Column(Integer, nullable=False)  # El id del pedido externo
+    id_orden_externa = Column(String(100), nullable=False, unique=True)
+    id_orden_original = Column(Integer, nullable=False)
     servicio_origen = Column(String(100), default="ecommerce")
     
     # RESPUESTA - Lo que recibiste
     codigo_seguimiento = Column(String(100), nullable=True)
-    estado_actual = Column(String(50), nullable=True)  # EN_TRANSITO, ENTREGADO, etc.
+    estado_actual = Column(String(50), nullable=True)
     ubicacion_actual = Column(String(200), nullable=True)
     fecha_actualizacion = Column(DateTime, nullable=True)
     
     # Metadata
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
-    request_json = Column(Text, nullable=True)  # Lo que enviaste (auditoría)
-    response_json = Column(Text, nullable=True)  # Lo que recibiste (auditoría)
+    request_json = Column(Text, nullable=True)
+    response_json = Column(Text, nullable=True)
     
-    # Relación (ahora opcional)
+    # Relación
     pedido = relationship("Pedido", back_populates="envios")
 
 
@@ -49,18 +48,18 @@ class Envio(Base):
 
 class ProductoEnvioSchema(BaseModel):
     """Producto dentro de la solicitud de envío"""
-    id_producto: int
+    sku: str  # ← Cambiado de id_producto
     nombre: str
     cantidad: int
-    precio: float
+    precio_unitario: float  # ← Cambiado de precio
     
     class Config:
         json_schema_extra = {
             "example": {
-                "id_producto": 8,
+                "sku": "ITEM01",
                 "nombre": "Playera Negra",
                 "cantidad": 2,
-                "precio": 199.99
+                "precio_unitario": 199.99
             }
         }
 
@@ -70,10 +69,7 @@ class DatosClienteEnvioSchema(BaseModel):
     nombre: str
     telefono: str
     email: str
-    direccion_completa: str
-    ciudad: str
-    estado: str
-    codigo_postal: str
+    direccion: str  # ← Cambiado de direccion_completa
     
     class Config:
         json_schema_extra = {
@@ -81,43 +77,39 @@ class DatosClienteEnvioSchema(BaseModel):
                 "nombre": "Juan Pérez",
                 "telefono": "6621234567",
                 "email": "juan@example.com",
-                "direccion_completa": "Calle Ejemplo 123, Col. Centro",
-                "ciudad": "Hermosillo",
-                "estado": "Sonora",
-                "codigo_postal": "83000"
+                "direccion": "Calle Ejemplo 123, Col. Centro"
             }
         }
 
 
 class EnvioSolicitudSchema(BaseModel):
-    """Lo que envías a la API de envíos"""
+    """Lo que envías a la API de envíos (CON WEBHOOK)"""
     id_orden_externa: str
-    id_orden_original: int
+    id_orden_original: str  # ← Cambiado a string
     servicio_origen: str = "ecommerce"
+    webhook_url: str
     datos_cliente: DatosClienteEnvioSchema
     productos: List[ProductoEnvioSchema]
     
     class Config:
         json_schema_extra = {
             "example": {
-                "id_orden_externa": "ECM-2024-00001",
-                "id_orden_original": 15,
-                "servicio_origen": "ecommerce",
+                "id_orden_externa": "003",
+                "id_orden_original": "P-456",
+                "servicio_origen": "Tienda Test",
+                "webhook_url": "https://e-commerce-test-mm6o.onrender.com/api/envios/webhook",
                 "datos_cliente": {
-                    "nombre": "Juan Pérez",
-                    "telefono": "6621234567",
-                    "email": "juan@example.com",
-                    "direccion_completa": "Calle Ejemplo 123",
-                    "ciudad": "Hermosillo",
-                    "estado": "Sonora",
-                    "codigo_postal": "83000"
+                    "nombre": "Ana Gomez",
+                    "telefono": "5551234",
+                    "email": "ana@ejemplo.com",
+                    "direccion": "Calle Falsa 123"
                 },
                 "productos": [
                     {
-                        "id_producto": 8,
-                        "nombre": "Playera",
+                        "sku": "ITEM01",
+                        "nombre": "Camiseta",
                         "cantidad": 2,
-                        "precio": 199.99
+                        "precio_unitario": 20.00
                     }
                 ]
             }
@@ -144,22 +136,10 @@ class EnvioRespuestaSchema(BaseModel):
         }
 
 
-class EnvioIniciarSchema(BaseModel):
-    """Lo que recibes del frontend para iniciar un envío"""
-    id_pedido: int
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id_pedido": 15
-            }
-        }
-
-
 class EnvioResponseSchema(BaseModel):
     """Lo que devuelves al frontend"""
     id_envio: int
-    id_pedido: Optional[int] = None  # ✅ Ahora es opcional
+    id_pedido: Optional[int] = None
     id_orden_externa: str
     codigo_seguimiento: Optional[str] = None
     estado_actual: Optional[str] = None
