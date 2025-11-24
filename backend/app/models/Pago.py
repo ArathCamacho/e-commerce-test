@@ -126,30 +126,29 @@ class PagoIniciarSchema(BaseModel):
 
 
 class BancoSolicitudSchema(BaseModel):
-    """Lo que TÚ envías al banco (DATOS_TRANS) - NOMBRES EN PASCALCASE"""
-    NumeroTarjetaOrigen: str
-    NumeroTarjetaDestino: str
-    NombreCliente: str
-    MesExp: int
-    AnioExp: int
-    Cvv: str
-    Monto: float
+    """Lo que TÚ envías al banco (DATOS_TRANS)"""
+    id_tarjeta_origen: str
+    id_tarjeta_destino: str
+    nombre: str
+    mes_exp: int
+    anio_exp: int
+    cvv: str
+    monto: float
+    # Eliminar estos campos si el banco no los requiere:
+    # moneda: str = "MXN"  # ← QUITAR
+    # tipo: str = "venta"   # ← QUITAR
 
 
 class BancoRespuestaSchema(BaseModel):
-    """Lo que EL BANCO te regresa (EDO_TRANS) - NOMBRES EN PASCALCASE"""
-    CreadaUTC: str
+    """Lo que EL BANCO te regresa (EDO_TRANS)"""
+    creada_utc: str
     id_transaccion: str
-    TipoTransaccion: str
-    MontoTransaccion: float
-    NumeroTarjeta: str
-    NombreEstado: str
-    Firma: str
-    Mensaje: Optional[str] = None
-    
-    # Campos adicionales que vienen pero no usaremos
-    MarcaTarjeta: Optional[str] = None
-    NumeroAutorizacion: Optional[str] = None
+    tipo: str
+    monto: float
+    numero_tarjeta: str
+    id_estado_transaccion: str
+    firma: str
+    mensaje: Optional[str] = None
 
 
 class PagoResponseSchema(BaseModel):
