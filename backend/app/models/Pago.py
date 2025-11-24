@@ -134,8 +134,9 @@ class BancoSolicitudSchema(BaseModel):
     anio_exp: int
     cvv: str
     monto: float
-    moneda: str = "MXN"
-    tipo: str = "venta"
+    # Eliminar estos campos si el banco no los requiere:
+    # moneda: str = "MXN"  # ← QUITAR
+    # tipo: str = "venta"   # ← QUITAR
 
 
 class BancoRespuestaSchema(BaseModel):

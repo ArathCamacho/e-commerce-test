@@ -229,9 +229,8 @@ class PagoServices:
                 mes_exp=datos.mes_exp,
                 anio_exp=datos.anio_exp,
                 cvv=datos.cvv,
-                monto=datos.monto,
-                moneda=datos.moneda,
-                tipo=datos.tipo
+                monto=datos.monto
+                # Quitar moneda y tipo si no los requiere
             )
             
             # Guardar request JSON
