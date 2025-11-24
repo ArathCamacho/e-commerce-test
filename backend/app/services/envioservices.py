@@ -32,27 +32,12 @@ class EnvioServices:
     def _crear_registro_pendiente(db: Session, datos: EnvioSolicitudSchema) -> Envio:
         """Crea el registro inicial en BD con estado PENDIENTE"""
         
-        # Convertir id_orden_original a int si es posible, sino dejar como NULL
-        id_pedido_int = None
-        try:
-            # Intenta extraer números del string "P-456" -> 456
-            if datos.id_orden_original:
-                # Si es solo números, convertir
-                if datos.id_orden_original.isdigit():
-                    id_pedido_int = int(datos.id_orden_original)
-                else:
-                    # Intentar extraer números (ej: "P-456" -> 456)
-                    import re
-                    numeros = re.findall(r'\d+', datos.id_orden_original)
-                    if numeros:
-                        id_pedido_int = int(numeros[0])
-        except:
-            pass
-        
+        # id_pedido se deja en NULL porque el id_orden_original del otro sistema
+        # no corresponde con tu tabla de pedidos
         envio = Envio(
-            id_pedido=id_pedido_int,  # Puede ser None
+            id_pedido=None,  # NULL - no hay relación con tabla pedido
             id_orden_externa=datos.id_orden_externa,
-            id_orden_original=datos.id_orden_original,  # String guardado aquí
+            id_orden_original=datos.id_orden_original,  # "P-456" guardado aquí
             servicio_origen=datos.servicio_origen,
             estado_actual="PENDIENTE"
         )
