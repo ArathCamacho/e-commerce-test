@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 # ⚠️ ACTUALIZA ESTA URL CON LA CORRECTA DEL BANCO
-PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"  
+PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"  # ← Cambia esto
 
 
 class PagoServices:
@@ -90,7 +90,7 @@ class PagoServices:
             # Crear registro de respuesta
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
-                id_transaccion=banco_resp.id_transaccion,
+                id_transaccion=banco_resp.IdTransaccion,  # ← Cambiado
                 tipo_transaccion=banco_resp.TipoTransaccion,
                 monto_transaccion=banco_resp.MontoTransaccion,
                 numero_tarjeta=banco_resp.NumeroTarjeta,
@@ -112,7 +112,7 @@ class PagoServices:
             estado_banco = banco_resp.NombreEstado.upper()
             
             # Estados posibles del banco según tu ejemplo
-            if estado_banco in ["ACEPTADA", "APROBADA", "APPROVED", "SUCCESS", "EXITOSO"]:
+            if estado_banco in ["ACEPTADA", "COMPLETADA", "APROBADA", "APPROVED", "SUCCESS", "EXITOSO"]:
                 pago.estado = "APROBADO"
             elif estado_banco in ["RECHAZADA", "RECHAZADO", "REJECTED", "DECLINED", "DENEGADO"]:
                 pago.estado = "RECHAZADO"
@@ -122,17 +122,21 @@ class PagoServices:
             db.commit()
             
             logger.info(f"✅ Pago procesado: {pago.id_pago} - {pago.estado}")
-            logger.info(f"💰 Transacción: {banco_resp.id_transaccion}")
+            logger.info(f"💰 Transacción: {banco_resp.IdTransaccion}")
             
         except ValueError as e:
             pago.estado = "ERROR"
-            error_msg = f"Formato de respuesta inválido: {str(e)}"
+            # ⚠️ Acortar mensaje para evitar error de longitud
+            error_msg = f"Error de validación: {str(e)[:100]}"
             
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 nombre_estado="ERROR",
-                mensaje=error_msg,
-                response_json=f"{error_msg}\n\nRespuesta: {json.dumps(respuesta)}"
+                mensaje=error_msg,  # ← Mensaje corto
+                response_json=json.dumps({
+                    "error": str(e),
+                    "respuesta_banco": respuesta
+                }, ensure_ascii=False, indent=2)
             )
             db.add(pago_respuesta)
             db.commit()
@@ -148,18 +152,18 @@ class PagoServices:
         try:
             error_body = response.json()
         except:
-            error_body = response.text
+            error_body = response.text[:200]  # ← Limitar texto
         
         error_detail = {
             "status_code": response.status_code,
-            "error": error_body,
+            "error": str(error_body)[:200],  # ← Limitar longitud
             "url": PAGOS_API_URL
         }
         
         pago_respuesta = PagoRespuesta(
             id_pago=pago.id_pago,
             nombre_estado="ERROR",
-            mensaje=f"Error HTTP {response.status_code}",
+            mensaje=f"Error HTTP {response.status_code}",  # ← Mensaje corto
             response_json=json.dumps(error_detail, ensure_ascii=False, indent=2)
         )
         
@@ -263,54 +267,66 @@ class PagoServices:
             db.refresh(solicitud)
             
             # Construir respuesta completa
-            return PagoResponseSchema(
-                id_pago=pago.id_pago,
-                id_pedido=pago.id_pedido,
-                monto=pago.monto,
-                moneda=pago.moneda,
-                estado=pago.estado,
-                metodo=pago.metodo,
-                fecha=pago.fecha,
-                numero_tarjeta_origen=solicitud.numero_tarjeta_origen,
-                nombre_cliente=solicitud.nombre_cliente,
-                id_transaccion=pago.respuesta.id_transaccion if pago.respuesta else None,
-                nombre_estado=pago.respuesta.nombre_estado if pago.respuesta else None,
-                mensaje=pago.respuesta.mensaje if pago.respuesta else None
-            )
+            try:
+                return PagoResponseSchema(
+                    id_pago=pago.id_pago,
+                    id_pedido=pago.id_pedido,
+                    monto=pago.monto,
+                    moneda=pago.moneda,
+                    estado=pago.estado,
+                    metodo=pago.metodo,
+                    fecha=pago.fecha,
+                    numero_tarjeta_origen=solicitud.numero_tarjeta_origen,
+                    nombre_cliente=solicitud.nombre_cliente,
+                    id_transaccion=pago.respuesta.id_transaccion if pago.respuesta else None,
+                    nombre_estado=pago.respuesta.nombre_estado if pago.respuesta else None,
+                    mensaje=pago.respuesta.mensaje if pago.respuesta else None
+                )
+            except Exception as e:
+                # Si hay error construyendo la respuesta, hacer rollback y relanzar
+                db.rollback()
+                logger.error(f"Error construyendo respuesta: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Error construyendo respuesta: {str(e)}")
             
         except httpx.TimeoutException as e:
+            db.rollback()  # ← Agregar rollback
             pago.estado = "ERROR"
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 nombre_estado="ERROR",
-                mensaje=f"Timeout: {str(e)}"
+                mensaje=f"Timeout"[:200]  # ← Limitar longitud
             )
             db.add(pago_respuesta)
             db.commit()
+            db.refresh(pago)  # ← Agregar refresh
             logger.error(f"⏱️ Timeout: {str(e)}")
             raise HTTPException(status_code=504, detail="Timeout: El banco no respondió")
             
         except httpx.RequestError as e:
+            db.rollback()  # ← Agregar rollback
             pago.estado = "ERROR"
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 nombre_estado="ERROR",
-                mensaje=f"Error de conexión: {str(e)}"
+                mensaje=f"Error de conexión"[:200]  # ← Limitar longitud
             )
             db.add(pago_respuesta)
             db.commit()
+            db.refresh(pago)  # ← Agregar refresh
             logger.error(f"🔌 Error de conexión: {str(e)}")
             raise HTTPException(status_code=503, detail=f"Error de conexión: {str(e)}")
             
         except Exception as e:
+            db.rollback()  # ← Agregar rollback
             pago.estado = "ERROR"
             pago_respuesta = PagoRespuesta(
                 id_pago=pago.id_pago,
                 nombre_estado="ERROR",
-                mensaje=f"Error inesperado: {str(e)}"
+                mensaje=f"Error inesperado"[:200]  # ← Limitar longitud
             )
             db.add(pago_respuesta)
             db.commit()
+            db.refresh(pago)  # ← Agregar refresh
             logger.exception("💥 Error inesperado")
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
     

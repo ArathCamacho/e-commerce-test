@@ -145,9 +145,10 @@ class BancoSolicitudSchema(BaseModel):
 class BancoRespuestaSchema(BaseModel):
     """
     Lo que EL BANCO te regresa (FORMATO PASCALCASE)
+    ⚠️ IMPORTANTE: Todos los campos usan PascalCase
     """
     CreadaUTC: str
-    id_transaccion: str
+    IdTransaccion: str  # ← Cambiado de id_transaccion a IdTransaccion
     TipoTransaccion: str
     MontoTransaccion: float
     MarcaTarjeta: Optional[str] = None
