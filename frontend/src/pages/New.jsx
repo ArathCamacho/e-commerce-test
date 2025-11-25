@@ -1,95 +1,45 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { HeroCarousel } from "../components/category/HeroCarousel";
 
 export default function Novedades() {
 
     const destacados = [
         {
+            id: 1,
             name: "Hoodie Oversize Beige",
-            desc: "Sudadera cómoda para uso diario",
+            desc: "Sudadera cómoda para uso diario con un estilo moderno y relajado.",
             price: "$899",
-            img: "/placeholder.jpg",
+            img: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?q=80&w=2070&auto=format&fit=crop",
         },
         {
+            id: 2,
             name: "Pantalón Cargo Negro",
-            desc: "Diseño moderno con múltiples bolsillos",
+            desc: "Diseño utilitario con múltiples bolsillos y corte ergonómico.",
             price: "$749",
-            img: "/placeholder.jpg",
+            img: "https://images.unsplash.com/photo-1517445312882-5627b9311357?q=80&w=2069&auto=format&fit=crop",
         },
         {
+            id: 3,
             name: "Playera Básica Blanca",
-            desc: "Corte regular 100% algodón",
+            desc: "Esencial de guardarropa, corte regular 100% algodón premium.",
             price: "$299",
-            img: "/placeholder.jpg",
+            img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1780&auto=format&fit=crop",
         },
-    ];
-
-    const iconos = [
-        { name: "Hoodies", img: "/placeholder.jpg" },
-        { name: "Pants", img: "/placeholder.jpg" },
-        { name: "Pantalones", img: "/placeholder.jpg" },
-        { name: "Playeras", img: "/placeholder.jpg" },
-        { name: "Chamarras", img: "/placeholder.jpg" },
-        { name: "Tenis", img: "/placeholder.jpg" },
+        {
+            id: 4,
+            name: "Chamarra Denim",
+            desc: "Estilo clásico reinventado con detalles modernos y durabilidad.",
+            price: "$1,299",
+            img: "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?q=80&w=1887&auto=format&fit=crop",
+        }
     ];
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="h-[calc(100vh-73px)] bg-gray-50 dark:bg-zinc-950 overflow-hidden">
+            <HeroCarousel products={destacados} />
 
-            {/* TÍTULO */}
-            <h1 className="text-3xl font-semibold mb-8">Novedades</h1>
-
-            {/* PRODUCTOS DESTACADOS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-
-                {destacados.map((p, i) => (
-                    <Link 
-                        to={`/producto/${i}`} 
-                        key={i} 
-                        className="cursor-pointer"
-                    >
-                        <img
-                            src={p.img}
-                            alt={p.name}
-                            className="w-full h-[450px] object-cover rounded-lg"
-                        />
-
-                        <h3 className="mt-3 text-sm font-medium">{p.name}</h3>
-                        <p className="text-xs text-gray-600">{p.desc}</p>
-                        <p className="font-semibold mt-1">{p.price}</p>
-                    </Link>
-                ))}
-
-            </div>
-
-            {/* SUBTÍTULO */}
-            <h2 className="text-2xl font-semibold mb-4">Comprar por categoría</h2>
-
-            {/* CARRUSEL DE ICONOS */}
-            <div className="flex gap-6 overflow-x-auto pb-4">
-
-                {iconos.map((i, idx) => (
-                    <Link
-                        to={`/producto/${idx}`}
-                        key={idx}
-                        className="min-w-[220px] cursor-pointer"
-                    >
-                        <div className="bg-gray-800 rounded-xl overflow-hidden h-40 flex items-center justify-center">
-                            <img
-                                src={i.img}
-                                alt={i.name}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-
-                        <p className="mt-2 text-center text-sm font-medium">
-                            {i.name}
-                        </p>
-                    </Link>
-                ))}
-
-            </div>
-
+            {/* Optional: Additional grid below if needed, but user asked to focus on carousel */}
+            {/* We can add a small "Ver todo" section or just leave it as a showcase */}
         </div>
     );
 }

@@ -1,10 +1,11 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { ProductCard } from "../components/category/ProductCard";
 
 export default function Ofertas() {
 
     const ofertas = [
         {
+            id: 1,
             name: "Hoodie Premium Gris",
             desc: "Sudadera de algodón suave",
             before: "$899",
@@ -12,6 +13,7 @@ export default function Ofertas() {
             img: "/placeholder.jpg",
         },
         {
+            id: 2,
             name: "Pantalón Jogger Negro",
             desc: "Tela ligera y fresca",
             before: "$799",
@@ -19,6 +21,7 @@ export default function Ofertas() {
             img: "/placeholder.jpg",
         },
         {
+            id: 3,
             name: "Tenis Urban Street",
             desc: "Comodidad para uso diario",
             before: "$1299",
@@ -26,6 +29,7 @@ export default function Ofertas() {
             img: "/placeholder.jpg",
         },
         {
+            id: 4,
             name: "Playera Oversize Blanca",
             desc: "Diseño moderno, corte amplio",
             before: "$399",
@@ -33,6 +37,7 @@ export default function Ofertas() {
             img: "/placeholder.jpg",
         },
         {
+            id: 5,
             name: "Chamarra Casual Café",
             desc: "Ideal para clima templado",
             before: "$1499",
@@ -40,6 +45,7 @@ export default function Ofertas() {
             img: "/placeholder.jpg",
         },
         {
+            id: 6,
             name: "Pantalón Cargo Beige",
             desc: "Material resistente",
             before: "$899",
@@ -49,43 +55,24 @@ export default function Ofertas() {
     ];
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors duration-300">
+            <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 py-12">
 
-            {/* TÍTULO */}
-            <h1 className="text-3xl font-semibold mb-8">Ofertas</h1>
+                {/* TÍTULO */}
+                <h1 className="text-4xl font-bold mb-12 text-gray-900 dark:text-zinc-100">Ofertas</h1>
 
-            {/* GRID DE PRODUCTOS EN DESCUENTO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-8">
-
-                {ofertas.map((p, i) => (
-                    <Link 
-                        to={`/producto/${i}`} 
-                        key={i}
-                        className="cursor-pointer group"
-                    >
-                        {/* Imagen */}
-                        <div className="w-full h-[380px] rounded-lg overflow-hidden">
-                            <img
-                                src={p.img}
-                                alt={p.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition"
-                            />
-                        </div>
-
-                        {/* Texto */}
-                        <h3 className="mt-3 text-sm font-medium">{p.name}</h3>
-                        <p className="text-xs text-gray-600">{p.desc}</p>
-
-                        {/* Precios */}
-                        <div className="mt-1 flex items-center gap-2">
-                            <span className="font-semibold text-black">{p.price}</span>
-                            <span className="text-gray-400 line-through text-sm">{p.before}</span>
-                        </div>
-                    </Link>
-                ))}
+                {/* GRID DE PRODUCTOS EN DESCUENTO */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {ofertas.map((p) => (
+                        <ProductCard
+                            key={p.id}
+                            product={{ ...p, description: p.desc, badge: "OFERTA" }}
+                            showAddButton={false}
+                        />
+                    ))}
+                </div>
 
             </div>
-
         </div>
     );
 }
