@@ -14,12 +14,12 @@ export function MobileMenu({ isOpen, onClose }) {
         <>
             {/* Overlay */}
             <div
-                className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
                 onClick={onClose}
             ></div>
 
             {/* Drawer */}
-            <div className="fixed top-[73px] left-0 right-0 bottom-0 bg-white dark:bg-zinc-900 z-40 md:hidden overflow-y-auto">
+            <div className="fixed top-[73px] left-0 right-0 bottom-0 bg-white dark:bg-zinc-900 z-40 lg:hidden overflow-y-auto">
                 <nav className="flex flex-col p-6 space-y-4">
                     <button
                         onClick={() => handleNavigation('/woman')}

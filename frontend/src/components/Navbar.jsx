@@ -39,9 +39,12 @@ export function Header() {
         <>
             <header
                 className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 sticky top-0 z-50 transition-all duration-300"
-                style={{ opacity: scrollOpacity }}
+                style={{
+                    opacity: scrollOpacity,
+                    pointerEvents: scrollOpacity < 0.1 ? 'none' : 'auto'
+                }}
             >
-                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4 flex items-center justify-between gap-2">
                     <NavbarLogo />
                     <NavbarLinks />
                     <NavbarIcons
