@@ -33,27 +33,31 @@ export function useAddressManagement(initialAddresses = []) {
     /**
      * Delete an address
      */
+    /**
+     * Delete an address
+     */
     const deleteAddress = (id) => {
-        setAddresses(prev => {
-            const filtered = prev.filter(addr => addr.id !== id)
-
-            // If we deleted the default address and there are others, make the first one default
-            const deletedWasDefault = prev.find(addr => addr.id === id)?.isDefault
-            if (deletedWasDefault && filtered.length > 0) {
-                filtered[0].isDefault = true
-            }
-
-            return filtered
-        })
+        setAddresses(prev => prev.filter(addr => addr.id !== id))
     }
 
     /**
      * Set an address as default
+     * If id is null, unsets all defaults
      */
     const setDefaultAddress = (id) => {
         setAddresses(prev => prev.map(addr => ({
             ...addr,
             isDefault: addr.id === id
+        })))
+    }
+
+    /**
+     * Unset default address
+     */
+    const unsetDefaultAddress = () => {
+        setAddresses(prev => prev.map(addr => ({
+            ...addr,
+            isDefault: false
         })))
     }
 
@@ -78,6 +82,7 @@ export function useAddressManagement(initialAddresses = []) {
         deleteAddress,
         setDefaultAddress,
         getAddressById,
-        getDefaultAddress
+        getDefaultAddress,
+        unsetDefaultAddress
     }
 }

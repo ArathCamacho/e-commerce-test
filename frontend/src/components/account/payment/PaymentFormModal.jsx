@@ -8,7 +8,7 @@ import { PLACEHOLDERS } from '../../../utils/constants'
  * Payment Form Modal
  * Unified modal for adding and editing payment methods
  */
-export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add' }) {
+export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add', isCheckout = false }) {
     const [formData, setFormData] = useState({
         cardholderName: '',
         cardNumber: '',
@@ -16,6 +16,7 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add' }
         cvv: ''
     })
     const [errors, setErrors] = useState({})
+    const [paymentPreference, setPaymentPreference] = useState('default') // 'default' or 'oneTime'
 
     // Initialize form data when modal opens or card changes
     useEffect(() => {
@@ -36,6 +37,7 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add' }
                 })
             }
             setErrors({})
+            setPaymentPreference('default') // Reset to default
         }
     }, [isOpen, card, mode])
 
@@ -76,7 +78,12 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add' }
             return
         }
 
-        onSave(formData)
+        // Include payment preference in the returned data if in checkout mode
+        const dataToSave = isCheckout
+            ? { ...formData, isDefault: paymentPreference === 'default', isOneTime: paymentPreference === 'oneTime' }
+            : formData
+
+        onSave(dataToSave)
         onClose()
     }
 
@@ -122,6 +129,56 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add' }
                         maxLength={4}
                     />
                 </div>
+
+                {/* Checkout Mode: Payment Preference */}
+                {isCheckout && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
+                        <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">
+                            ¿Desea que este sea su método de pago predeterminado?
+                        </p>
+                        <div className="space-y-3">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                    checked={paymentPreference === 'default'}
+                                    onChange={() => setPaymentPreference('default')}
+                                    className="sr-only"
+                                />
+                                <div className={`w-5 h-5 border rounded-full flex items-center justify-center transition-colors ${paymentPreference === 'default'
+                                        ? 'border-[rgb(169,191,162)]'
+                                        : 'border-gray-300 dark:border-zinc-600'
+                                    }`}>
+                                    {paymentPreference === 'default' && (
+                                        <div className="w-3 h-3 bg-[rgb(169,191,162)] rounded-full" />
+                                    )}
+                                </div>
+                                <span className="text-sm text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-zinc-100">
+                                    Establecer como predeterminado
+                                </span>
+                            </label>
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                    type="radio"
+                                    name="paymentPreference"
+                                    value="oneTime"
+                                    checked={paymentPreference === 'oneTime'}
+                                    onChange={() => setPaymentPreference('oneTime')}
+                                    className="sr-only"
+                                />
+                                <div className={`w-5 h-5 border rounded-full flex items-center justify-center transition-colors ${paymentPreference === 'oneTime'
+                                        ? 'border-[rgb(169,191,162)]'
+                                        : 'border-gray-300 dark:border-zinc-600'
+                                    }`}>
+                                    {paymentPreference === 'oneTime' && (
+                                        <div className="w-3 h-3 bg-[rgb(169,191,162)] rounded-full" />
+                                    )}
+                                </div>
+                                <span className="text-sm text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-zinc-100">
+                                    Única vez
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="flex gap-4">

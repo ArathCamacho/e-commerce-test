@@ -37,7 +37,8 @@ export function ShippingAddresses() {
         updateAddress,
         deleteAddress,
         setDefaultAddress,
-        getAddressById
+        getAddressById,
+        unsetDefaultAddress
     } = useAddressManagement(INITIAL_ADDRESSES)
 
     // Modal states
@@ -97,6 +98,10 @@ export function ShippingAddresses() {
         setShowAddModal(false)
     }
 
+    const handleRemoveDefault = (addressId) => {
+        unsetDefaultAddress()
+    }
+
     const editingAddress = editingAddressId ? getAddressById(editingAddressId) : null
 
     return (
@@ -123,6 +128,7 @@ export function ShippingAddresses() {
                         onClick={handleAddressClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onRemoveDefault={handleRemoveDefault}
                     />
                 ))}
             </div>

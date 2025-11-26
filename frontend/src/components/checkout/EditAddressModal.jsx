@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Modal } from './Modal'
+import { Modal } from '../common/Modal'
 
 export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
     const [formData, setFormData] = useState({

@@ -1,28 +1,49 @@
-import { User, CreditCard } from 'lucide-react'
-import { ADDRESS_CARD_WIDTH, ADDRESS_CARD_MIN_HEIGHT } from '../../../utils/constants'
+import { User, CreditCard, X } from 'lucide-react'
+import { useState } from 'react'
 
 /**
  * Payment Card Component
  * Displays a single payment method with actions
  */
-export function PaymentCard({ card, onEdit, onDelete, onClick }) {
+export function PaymentCard({ card, onEdit, onDelete, onClick, onRemoveDefault }) {
+    const [isHovering, setIsHovering] = useState(false)
+
     // Mask card number showing only last 4 digits
     const maskedNumber = `**** **** **** **${card.cardNumber.slice(-2)}`
+
+    const handleRemoveDefault = (e) => {
+        e.stopPropagation()
+        if (onRemoveDefault) {
+            onRemoveDefault(card.id)
+        }
+    }
 
     return (
         <fieldset
             onClick={() => onClick(card.id)}
-            className={`p-5 relative cursor-pointer transition-all w-full sm:w-auto ${card.isDefault
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            className={`p-5 relative cursor-pointer transition-all w-full sm:w-72 aspect-square ${card.isDefault
                 ? 'bg-[rgb(240,244,239)] dark:bg-zinc-800 border border-[rgb(169,191,162)] dark:border-[rgb(169,191,162)]'
                 : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700'
                 }`}
-            style={{ width: 'auto', maxWidth: '100%', minWidth: '252px', minHeight: ADDRESS_CARD_MIN_HEIGHT }}
         >
             {/* Default Label */}
             {card.isDefault && (
                 <legend className="px-2 text-xs font-light text-[rgb(169,191,162)] mx-auto">
                     Tarjeta predeterminada
                 </legend>
+            )}
+
+            {/* Remove Default Button - Appears on Hover */}
+            {card.isDefault && isHovering && onRemoveDefault && (
+                <button
+                    onClick={handleRemoveDefault}
+                    className={`absolute top-3 right-3 w-6 h-6 bg-[rgb(169,191,162)] hover:bg-[rgb(159,181,152)] text-white rounded-full flex items-center justify-center transition-all duration-300 z-10 border-2 border-white ${isHovering ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+                        }`}
+                >
+                    <X className="w-3.5 h-3.5" />
+                </button>
             )}
 
             {/* Content */}

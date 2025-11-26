@@ -33,7 +33,8 @@ export function PaymentMethods() {
         updateCard,
         deleteCard,
         setDefaultCard,
-        getCardById
+        getCardById,
+        unsetDefaultCard
     } = usePaymentManagement(INITIAL_CARDS)
 
     // Modal states
@@ -93,6 +94,10 @@ export function PaymentMethods() {
         setShowAddModal(false)
     }
 
+    const handleRemoveDefault = (cardId) => {
+        unsetDefaultCard()
+    }
+
     const editingCard = editingCardId ? getCardById(editingCardId) : null
 
     return (
@@ -119,6 +124,7 @@ export function PaymentMethods() {
                         onClick={handleCardClick}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onRemoveDefault={handleRemoveDefault}
                     />
                 ))}
             </div>

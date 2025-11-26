@@ -33,27 +33,31 @@ export function usePaymentManagement(initialCards = []) {
     /**
      * Delete a payment card
      */
+    /**
+     * Delete a payment card
+     */
     const deleteCard = (id) => {
-        setCards(prev => {
-            const filtered = prev.filter(card => card.id !== id)
-
-            // If we deleted the default card and there are others, make the first one default
-            const deletedWasDefault = prev.find(card => card.id === id)?.isDefault
-            if (deletedWasDefault && filtered.length > 0) {
-                filtered[0].isDefault = true
-            }
-
-            return filtered
-        })
+        setCards(prev => prev.filter(card => card.id !== id))
     }
 
     /**
      * Set a card as default
+     * If id is null, unsets all defaults
      */
     const setDefaultCard = (id) => {
         setCards(prev => prev.map(card => ({
             ...card,
             isDefault: card.id === id
+        })))
+    }
+
+    /**
+     * Unset default card
+     */
+    const unsetDefaultCard = () => {
+        setCards(prev => prev.map(card => ({
+            ...card,
+            isDefault: false
         })))
     }
 
@@ -78,6 +82,7 @@ export function usePaymentManagement(initialCards = []) {
         deleteCard,
         setDefaultCard,
         getCardById,
-        getDefaultCard
+        getDefaultCard,
+        unsetDefaultCard
     }
 }
