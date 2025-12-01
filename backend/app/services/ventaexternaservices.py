@@ -18,19 +18,6 @@ class VentaExternaServices:
     
     @staticmethod
     def registrar_venta(db: Session, datos: VentaExternaRegistroSchema):
-        """
-        🛍️ REGISTRAR VENTA EXTERNA
-        
-        Flujo:
-        1. Verificar que la orden no esté duplicada
-        2. Validar que el producto exista
-        3. Crear cliente genérico si no existe
-        4. Crear pedido con el item
-        5. Descontar stock
-        6. Guardar registro de venta externa
-        """
-        
-        # 1. Verificar duplicados
         venta_existe = db.query(VentaExterna).filter(
             VentaExterna.order_id == datos.order_id
         ).first()
@@ -40,8 +27,7 @@ class VentaExternaServices:
                 status_code=400,
                 detail=f"La orden {datos.order_id} ya fue registrada anteriormente"
             )
-        
-        # 2. Validar que el producto exista
+
         producto = db.query(Producto).filter(
             Producto.id_producto == datos.product_external_id,
             Producto.store_id == datos.store_id,
@@ -49,7 +35,6 @@ class VentaExternaServices:
         ).first()
         
         if not producto:
-            # Guardar como ERROR si el producto no existe
             venta = VentaExterna(
                 id_externo=datos.id,
                 order_id=datos.order_id,
@@ -74,8 +59,7 @@ class VentaExternaServices:
                 status_code=404,
                 detail=f"Producto {datos.product_external_id} no encontrado en store {datos.store_id}"
             )
-        
-        # 3. Verificar stock suficiente
+
         if producto.stock < datos.quantity:
             venta = VentaExterna(
                 id_externo=datos.id,
@@ -102,7 +86,6 @@ class VentaExternaServices:
             )
         
         try:
-            # 4. Buscar o crear cliente genérico para ventas externas
             cliente_externo = db.query(Cliente).filter(
                 Cliente.correo == "ventas.externas@sistema.com"
             ).first()
@@ -118,13 +101,11 @@ class VentaExternaServices:
                 db.add(cliente_externo)
                 db.commit()
                 db.refresh(cliente_externo)
-            
-            # 5. Crear pedido
             total = Decimal(str(datos.price)) * datos.quantity
             
             pedido = Pedido(
                 id_cliente=cliente_externo.id_cliente,
-                id_direccion=1,  # Dirección por defecto o NULL si es permitido
+                id_direccion=1,  
                 total=total,
                 estado="PAGADO" if datos.payment_status == "PAID" else "PENDIENTE",
                 fecha_creacion=datetime.fromisoformat(datos.created_at.replace('Z', ''))
@@ -132,8 +113,7 @@ class VentaExternaServices:
             db.add(pedido)
             db.commit()
             db.refresh(pedido)
-            
-            # 6. Crear item del pedido
+
             item = PedidoItem(
                 id_pedido=pedido.id_pedido,
                 id_producto=producto.id_producto,
@@ -141,11 +121,9 @@ class VentaExternaServices:
                 precio_unitario=Decimal(str(datos.price))
             )
             db.add(item)
-            
-            # 7. Descontar stock
+
             producto.stock -= datos.quantity
-            
-            # 8. Crear registro de venta externa
+
             venta = VentaExterna(
                 id_externo=datos.id,
                 order_id=datos.order_id,
@@ -172,8 +150,7 @@ class VentaExternaServices:
             
         except Exception as e:
             db.rollback()
-            
-            # Guardar como ERROR
+
             venta = VentaExterna(
                 id_externo=datos.id,
                 order_id=datos.order_id,
@@ -201,7 +178,6 @@ class VentaExternaServices:
     
     @staticmethod
     def consultar_ventas_externas(db: Session, order_id: str = None):
-        """🔍 Consultar ventas externas registradas"""
         if order_id:
             ventas = db.query(VentaExterna).filter(
                 VentaExterna.order_id == order_id

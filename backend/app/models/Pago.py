@@ -5,16 +5,9 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
-# ============================================
-# MODELOS DE BASE DE DATOS (SQLAlchemy)
-# ============================================
 
 class Pago(Base):
-    """
-    💳 TABLA DE PAGOS
-    
-    Representa el pago comercial vinculado al pedido
-    """
+
     __tablename__ = "pago"
     
     id_pago = Column(Integer, primary_key=True, index=True)
@@ -33,11 +26,7 @@ class Pago(Base):
 
 
 class PagoSolicitud(Base):
-    """
-    📤 TABLA DE SOLICITUDES DE PAGO
-    
-    Guarda lo que TÚ envías al banco
-    """
+
     __tablename__ = "pago_solicitud"
     
     id_solicitud = Column(Integer, primary_key=True, index=True)
@@ -63,17 +52,13 @@ class PagoSolicitud(Base):
 
 
 class PagoRespuesta(Base):
-    """
-    📥 TABLA DE RESPUESTAS DE PAGO
-    
-    Guarda lo que EL BANCO te regresa
-    """
+
     __tablename__ = "pago_respuesta"
     
     id_respuesta = Column(Integer, primary_key=True, index=True)
     id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False, unique=True)
     
-    # EDO_TRANS - Lo que el banco responde
+
     creada_utc = Column(DateTime, nullable=True)
     id_transaccion = Column(String(100), nullable=True)
     tipo_transaccion = Column(String(50), nullable=True)
@@ -83,17 +68,12 @@ class PagoRespuesta(Base):
     firma = Column(String(500), nullable=True)
     mensaje = Column(String(500), nullable=True)
     
-    # Metadata
     fecha_registro = Column(DateTime, default=datetime.utcnow)
     response_json = Column(Text, nullable=True)
-    
-    # Relación
+
     pago = relationship("Pago", back_populates="respuesta")
 
 
-# ============================================
-# SCHEMAS DE PYDANTIC
-# ============================================
 
 class PagoIniciarSchema(BaseModel):
     """Lo que el frontend te envía para iniciar el pago"""
@@ -126,10 +106,7 @@ class PagoIniciarSchema(BaseModel):
 
 
 class BancoSolicitudSchema(BaseModel):
-    """
-    Lo que TÚ envías al banco (FORMATO PASCALCASE)
-    ⚠️ IMPORTANTE: El banco usa PascalCase, no snake_case
-    """
+
     NumeroTarjetaOrigen: str = Field(alias="numero_tarjeta_origen")
     NumeroTarjetaDestino: str = Field(alias="numero_tarjeta_destino")
     NombreCliente: str = Field(alias="nombre_cliente")
@@ -143,10 +120,7 @@ class BancoSolicitudSchema(BaseModel):
 
 
 class BancoRespuestaSchema(BaseModel):
-    """
-    Lo que EL BANCO te regresa (FORMATO PASCALCASE)
-    ⚠️ IMPORTANTE: Todos los campos usan PascalCase
-    """
+
     CreadaUTC: str
     IdTransaccion: str  # ← Cambiado de id_transaccion a IdTransaccion
     TipoTransaccion: str

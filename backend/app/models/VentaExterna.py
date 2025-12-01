@@ -5,24 +5,15 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
-# ============================================
-# MODELO DE BASE DE DATOS (SQLAlchemy)
-# ============================================
 
 class VentaExterna(Base):
-    """
-    🛍️ REGISTRO DE VENTAS EXTERNAS
-    
-    Guarda las ventas que otros sistemas te notifican
-    """
     __tablename__ = "venta_externa"
     
     id_venta_externa = Column(Integer, primary_key=True, index=True, autoincrement=True)
     
-    # Datos que recibes de ellos
-    id_externo = Column(Integer, nullable=True)  # Su ID interno
-    order_id = Column(String(100), nullable=False, unique=True)  # Su número de orden
-    store_id = Column(Integer, nullable=False)  # Tu store_id
+    id_externo = Column(Integer, nullable=True) 
+    order_id = Column(String(100), nullable=False, unique=True) 
+    store_id = Column(Integer, nullable=False)  
     product_external_id = Column(Integer, ForeignKey("producto.id_producto"), nullable=False)
     product_name = Column(String(200), nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
@@ -32,21 +23,14 @@ class VentaExterna(Base):
     options = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False)
     payment_status = Column(String(50), nullable=False)
-    
-    # Control interno
     fecha_registro = Column(DateTime, default=datetime.utcnow)
-    procesado = Column(String(20), default="PENDIENTE")  # PENDIENTE, PROCESADO, ERROR
+    procesado = Column(String(20), default="PENDIENTE")  
     id_pedido_generado = Column(Integer, ForeignKey("pedido.id_pedido"), nullable=True)
-    request_json = Column(Text, nullable=True)  # JSON completo recibido
-    
-    # Relaciones
+    request_json = Column(Text, nullable=True)  
+
     producto = relationship("Producto")
     pedido = relationship("Pedido")
 
-
-# ============================================
-# SCHEMAS DE PYDANTIC
-# ============================================
 
 class VentaExternaRegistroSchema(BaseModel):
     """Lo que recibes del webhook"""
@@ -60,7 +44,7 @@ class VentaExternaRegistroSchema(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
     options: Optional[str] = None
-    created_at: str  # "2025-11-20T10:30:00"
+    created_at: str  
     payment_status: str
     
     class Config:

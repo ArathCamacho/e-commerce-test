@@ -121,8 +121,6 @@ async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
 @router.post("/pagos/procesar", response_model=PagoResponseSchema)
 async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db)):
     """
-    💳 PROCESAR PAGO CON EL BANCO
-    
     Body:
     {
         "numero_tarjeta_origen": "5555555555554444",
@@ -142,21 +140,13 @@ async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db))
 
 @router.get("/pagos/{id_pago}", response_model=PagoResponseSchema)
 async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
-    """
-    🔍 CONSULTAR ESTADO DE UN PAGO
-    
-    Ejemplo: GET /api/pagos/1
-    """
+
     return PagoServices.consultar_pago(db, id_pago)
 
 
 @router.get("/pagos/pedido/{id_pedido}", response_model=List[PagoResponseSchema])
 async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_db)):
-    """
-    🔍 CONSULTAR TODOS LOS PAGOS DE UN PEDIDO
-    
-    Ejemplo: GET /api/pagos/pedido/1
-    """
+
     return PagoServices.consultar_pagos_por_pedido(db, id_pedido)
 # ============================================
 # ENDPOINTS DE ENVÍOS
