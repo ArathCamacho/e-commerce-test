@@ -1,14 +1,35 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import authService from '../services/authService'
 
 export function Login() {
+    const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        // Handle login logic here
-        console.log('Login:', { email, password })
+        setError('')
+        setLoading(true)
+
+        try {
+            const response = await authService.login(email, password)
+
+            // Guardar token y datos del usuario
+            localStorage.setItem('token', response.data.token)
+            localStorage.setItem('user', JSON.stringify(response.data.user))
+
+            // Redirigir a la cuenta
+            navigate('/account')
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'Error al iniciar sesión. Por favor verifica tus credenciales.'
+            setError(errorMessage)
+            console.error('Login error:', error)
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -35,9 +56,16 @@ export function Login() {
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl font-bold text-[rgb(77,76,76)] dark:text-zinc-100 mb-8">
+            <h1 className="text-2xl font-bold text-[rgb(77,76,76)] dark:text-zinc-100 mb-4">
                 Iniciar Sesión
             </h1>
+
+            {/* Error Message */}
+            {error && (
+                <div className="w-full max-w-[400px] mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded">
+                    {error}
+                </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="w-full max-w-[400px] space-y-4">
@@ -68,9 +96,10 @@ export function Login() {
 
                 <button
                     type="submit"
-                    className="w-full h-[45px] bg-[rgb(169,191,162)] text-white text-base font-bold hover:bg-[rgb(159,181,152)] transition-colors mt-4"
+                    disabled={loading}
+                    className="w-full h-[45px] bg-[rgb(169,191,162)] text-white text-base font-bold hover:bg-[rgb(159,181,152)] transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Iniciar Sesión
+                    {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
                 </button>
 
                 <div className="text-center mt-6">

@@ -1,39 +1,79 @@
+import { useState, useEffect } from 'react'
+import orderService from '../../services/orderService'
+
 export function OrdersList() {
-    const orders = [
-        {
-            id: 1,
-            status: 'Por pagar',
-            statusKey: 'pending',
-            title: 'Zuecos',
-            subtitle: 'Zuecos/Unisex',
-            details: 'Talla 43, Color Verde Olivo',
-            price: 'MX $2300',
-            total: 'MX $2300 + Envío',
-            image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Zuecos'
-        },
-        {
-            id: 2,
-            status: 'Enviado',
-            statusKey: 'shipped',
-            title: 'Camisa de verano',
-            subtitle: 'Camisa de verano/Hombre',
-            details: 'Talla M, Color caqui',
-            price: 'MX $450',
-            total: 'MX $450 + Envío',
-            image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Camisa'
-        },
-        {
-            id: 3,
-            status: 'Enviado',
-            statusKey: 'shipped',
-            title: 'Bermudas',
-            subtitle: 'Bermudas/Hombre',
-            details: 'Talla 28x30, Color café oscuro',
-            price: 'MX $700',
-            total: 'MX $700 + Envío',
-            image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Bermudas'
+    const [orders, setOrders] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+
+    useEffect(() => {
+        loadOrders()
+    }, [])
+
+    const loadOrders = async () => {
+        try {
+            setLoading(true)
+            const response = await orderService.getOrders()
+            setOrders(response.data)
+        } catch (error) {
+            console.error('Error loading orders:', error)
+            setError('No se pudieron cargar las órdenes')
+            // Fallback a datos de ejemplo
+            setOrders([
+                {
+                    id: 1,
+                    status: 'Por pagar',
+                    statusKey: 'pending',
+                    title: 'Zuecos',
+                    subtitle: 'Zuecos/Unisex',
+                    details: 'Talla 43, Color Verde Olivo',
+                    price: 'MX $2300',
+                    total: 'MX $2300 + Envío',
+                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Zuecos'
+                },
+                {
+                    id: 2,
+                    status: 'Enviado',
+                    statusKey: 'shipped',
+                    title: 'Camisa de verano',
+                    subtitle: 'Camisa de verano/Hombre',
+                    details: 'Talla M, Color caqui',
+                    price: 'MX $450',
+                    total: 'MX $450 + Envío',
+                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Camisa'
+                },
+                {
+                    id: 3,
+                    status: 'Enviado',
+                    statusKey: 'shipped',
+                    title: 'Bermudas',
+                    subtitle: 'Bermudas/Hombre',
+                    details: 'Talla 28x30, Color café oscuro',
+                    price: 'MX $700',
+                    total: 'MX $700 + Envío',
+                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Bermudas'
+                }
+            ])
+        } finally {
+            setLoading(false)
         }
-    ]
+    }
+
+    if (loading) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-600 dark:text-zinc-400">Cargando órdenes...</p>
+            </div>
+        )
+    }
+
+    if (error && orders.length === 0) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-red-600 dark:text-red-400">{error}</p>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
