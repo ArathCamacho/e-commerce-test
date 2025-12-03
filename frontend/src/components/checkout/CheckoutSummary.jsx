@@ -63,25 +63,27 @@ export function CheckoutSummary() {
             }
 
             // Formatear el número de tarjeta (remover espacios)
-            const numeroTarjeta = paymentMethod.cardNumber?.replace(/\s/g, '') || "411111111115"
+            const numeroTarjeta = paymentMethod.cardNumber?.replace(/\s/g, '') || "5555555555554444"
 
             // Extraer mes y año de expiración
             const [mesExp, anioExp] = paymentMethod.expiryDate?.split('/') || ['12', '30']
 
+            // ✅ NUEVO: Ya NO se envía numero_tarjeta_destino
             const datosPago = {
                 id_pedido: pedidoResponse.id_pedido,
-                numero_tarjeta_origen: numeroTarjeta,
-                numero_tarjeta_destino: numeroTarjeta, // Para pruebas, usar la misma tarjeta
-                nombre_cliente: paymentMethod.cardholderName || "Cliente",
+                numero_tarjeta_origen: numeroTarjeta, // La tarjeta del cliente
+                nombre_cliente: paymentMethod.cardholderName || cliente.nombre || "Cliente",
                 mes_exp: parseInt(mesExp) || 12,
                 anio_exp: parseInt(`20${anioExp}`) || 2030, // Convertir 30 a 2030
-                cvv: paymentMethod.cvv || "567",
+                cvv: paymentMethod.cvv || "111",
                 monto: parseFloat(pedidoResponse.total), // Usar el total del pedido creado
                 moneda: "MXN",
                 tipo: "venta"
             }
 
             console.log('💳 Procesando pago con banco...')
+            console.log('📤 Datos enviados:', datosPago)
+            
             const pagoResponse = await PagoService.procesar(datosPago)
             
             console.log('💰 Respuesta del pago:', pagoResponse)
@@ -89,10 +91,7 @@ export function CheckoutSummary() {
             // PASO 3: Verificar resultado del pago
             const estadoPago = pagoResponse.estado?.toUpperCase()
 
-            // Para la tarjeta de prueba, siempre consideramos exitoso
-            if (estadoPago === "APROBADO" || estadoPago === "COMPLETADO" ||
-                datosPago.numero_tarjeta_origen === "411111111115") {
-
+            if (estadoPago === "APROBADO" || estadoPago === "COMPLETADO") {
                 setPaymentStatus('success')
 
                 console.log('✅ Pago exitoso!')
@@ -108,15 +107,22 @@ export function CheckoutSummary() {
                     navigate('/account?tab=orders')
                 }, 2000)
 
-            } else {
+            } else if (estadoPago === "RECHAZADO") {
                 // Pago rechazado
                 setPaymentStatus('error')
 
                 console.error('❌ Pago rechazado:', pagoResponse)
 
                 showNotification(
-                    `Pago rechazado: ${pagoResponse.mensaje || 'Inténtalo de nuevo'}`,
+                    `Pago rechazado: ${pagoResponse.mensaje || 'Verifica los datos de tu tarjeta'}`,
                     "error"
+                )
+            } else {
+                // Estado desconocido o pendiente
+                setPaymentStatus('error')
+                showNotification(
+                    `Estado del pago: ${estadoPago}. ${pagoResponse.mensaje || ''}`,
+                    "warning"
                 )
             }
 

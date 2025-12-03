@@ -14,7 +14,7 @@ from app.models.Categoria import CategoriaResponseSchema, Categoria
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
 from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
 from app.services.pagoservices import PagoServices
-from app.models.Pago import PagoIniciarSchema, PagoResponseSchema
+from app.models.Pago import PagoIniciarSchema, PagoFrontendSchema, PagoResponseSchema
 from app.services.envioservices import EnvioServices
 from app.models.Envio import EnvioSolicitudSchema, EnvioResponseSchema, EnvioRespuestaSchema
 
@@ -75,21 +75,39 @@ async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
     return SistemaServices.obtener_catalogo_completo_sin_filtros(db)
 
 
+# Endpoint NUEVO para el frontend (sin tarjeta destino)
 @router.post("/pagos/procesar", response_model=PagoResponseSchema)
-async def procesar_pago(datos: PagoIniciarSchema, db: Session = Depends(get_db)):
+async def procesar_pago_desde_frontend(
+    datos: PagoFrontendSchema,  # ← Usa el nuevo schema
+    db: Session = Depends(get_db)
+):
+    """
+    Procesa un pago desde el frontend.
+    El cliente solo envía su tarjeta, tu tarjeta destino se agrega automáticamente.
+    """
+    return await PagoServices.procesar_pago_frontend(db, datos)
 
+
+# Endpoint INTERNO (con tarjeta destino explícita) - solo para testing/admin
+@router.post("/pagos/procesar-completo", response_model=PagoResponseSchema)
+async def procesar_pago_completo(
+    datos: PagoIniciarSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Procesa un pago con tarjeta destino explícita.
+    Solo para pruebas o uso administrativo.
+    """
     return await PagoServices.procesar_pago(db, datos)
 
 
 @router.get("/pagos/{id_pago}", response_model=PagoResponseSchema)
 async def consultar_pago(id_pago: int, db: Session = Depends(get_db)):
-
     return PagoServices.consultar_pago(db, id_pago)
 
 
 @router.get("/pagos/pedido/{id_pedido}", response_model=List[PagoResponseSchema])
 async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_db)):
-
     return PagoServices.consultar_pagos_por_pedido(db, id_pedido)
 
 @router.post("/envios/mock", response_model=EnvioRespuestaSchema)

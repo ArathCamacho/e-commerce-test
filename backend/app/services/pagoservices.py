@@ -10,6 +10,7 @@ from app.models.Pago import (
     PagoSolicitud,
     PagoRespuesta,
     PagoIniciarSchema,
+    PagoFrontendSchema,  # ← NUEVO: Schema sin tarjeta destino
     BancoSolicitudSchema,
     BancoRespuestaSchema,
     PagoResponseSchema
@@ -18,7 +19,8 @@ from app.models.Pago import (
 
 logger = logging.getLogger(__name__)
 
-PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"  
+PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"
+MI_TARJETA_DESTINO = "4111111111111115"  # ← Tu tarjeta que recibe los pagos
 
 
 class PagoServices:
@@ -200,6 +202,37 @@ class PagoServices:
         
         logger.info(f"Respuesta del banco: {response.status_code}")
         return response
+    
+    
+    @staticmethod
+    async def procesar_pago_frontend(db: Session, datos: PagoFrontendSchema) -> PagoResponseSchema:
+        """
+        💳 PROCESAR PAGO DESDE EL FRONTEND
+        Este método recibe los datos del cliente SIN la tarjeta destino
+        y automáticamente usa tu tarjeta hardcodeada
+        
+        Args:
+            db: Sesión de base de datos
+            datos: Datos del pago del cliente (sin tarjeta destino)
+        
+        Returns:
+            PagoResponseSchema con el resultado del pago
+        """
+        # Convertir a PagoIniciarSchema agregando tu tarjeta destino
+        datos_completos = PagoIniciarSchema(
+            numero_tarjeta_origen=datos.numero_tarjeta_origen,
+            numero_tarjeta_destino=MI_TARJETA_DESTINO,  # ← Hardcodeado
+            nombre_cliente=datos.nombre_cliente,
+            mes_exp=datos.mes_exp,
+            anio_exp=datos.anio_exp,
+            cvv=datos.cvv,
+            monto=datos.monto,
+            moneda=datos.moneda,
+            tipo=datos.tipo,
+            id_pedido=datos.id_pedido
+        )
+        
+        return await PagoServices.procesar_pago(db, datos_completos)
     
     
     @staticmethod

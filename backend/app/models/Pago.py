@@ -75,10 +75,12 @@ class PagoRespuesta(Base):
 
 
 
-class PagoIniciarSchema(BaseModel):
-    """Lo que el frontend te envía para iniciar el pago"""
+class PagoFrontendSchema(BaseModel):
+    """
+    Lo que el FRONTEND envía para procesar un pago
+    NO incluye tarjeta destino (se hardcodea en el backend)
+    """
     numero_tarjeta_origen: str
-    numero_tarjeta_destino: str
     nombre_cliente: str
     mes_exp: int
     anio_exp: int
@@ -91,13 +93,12 @@ class PagoIniciarSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "numero_tarjeta_origen": "4141414141414141",
-                "numero_tarjeta_destino": "5555555555554444",
-                "nombre_cliente": "Arath Camacho",
+                "numero_tarjeta_origen": "5555555555554444",
+                "nombre_cliente": "Comprador 1",
                 "mes_exp": 12,
-                "anio_exp": 2028,
-                "cvv": "123",
-                "monto": 199.99,
+                "anio_exp": 2030,
+                "cvv": "111",
+                "monto": 10.00,
                 "moneda": "MXN",
                 "tipo": "venta",
                 "id_pedido": 1
