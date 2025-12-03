@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from app.services.sistemaservices import SistemaServices
@@ -181,7 +181,7 @@ async def obtener_carrito(id_cliente: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/carrito/item/{id_item}")
-async def eliminar_item_carrito(id_item: int, id_cliente: int, db: Session = Depends(get_db)):
+async def eliminar_item_carrito(id_item: int, id_cliente: int = Query(...), db: Session = Depends(get_db)):
     return CarritoServices.eliminar_item(db, id_item, id_cliente)
 
 

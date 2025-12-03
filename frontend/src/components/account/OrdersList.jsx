@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import orderService from '../../services/orderService'
+import { PedidoService, obtenerClienteLocal } from '../../services/apiservice'
 
 export function OrdersList() {
     const [orders, setOrders] = useState([])
@@ -13,47 +13,40 @@ export function OrdersList() {
     const loadOrders = async () => {
         try {
             setLoading(true)
-            const response = await orderService.getOrders()
-            setOrders(response.data)
+            const cliente = obtenerClienteLocal()
+            
+            if (!cliente?.id_cliente) {
+                setOrders([])
+                setError('Debes iniciar sesión para ver tus pedidos')
+                return
+            }
+            
+            const response = await PedidoService.listarPorCliente(cliente.id_cliente)
+            const rawOrders = response.pedidos || response || []
+            
+            // Map backend data to UI format
+            const mappedOrders = rawOrders.map(order => {
+                const firstItem = order.items && order.items.length > 0 ? order.items[0] : null
+                const product = firstItem ? firstItem.producto : null
+                
+                return {
+                    id: order.id_pedido,
+                    status: order.estado,
+                    statusKey: order.estado ? order.estado.toLowerCase() : 'pending',
+                    title: product ? product.nombre : `Pedido #${order.id_pedido}`,
+                    subtitle: product ? (product.categoria || 'Producto') : 'General',
+                    details: `Items: ${order.items ? order.items.length : 0} - Fecha: ${new Date(order.fecha_creacion).toLocaleDateString()}`,
+                    price: `$${order.total}`,
+                    total: `$${order.total}`,
+                    image: product ? (product.imagen || product.image) : 'https://placehold.co/112x95/E5E7EB/666666?text=No+Image'
+                }
+            })
+
+            setOrders(mappedOrders)
         } catch (error) {
             console.error('Error loading orders:', error)
             setError('No se pudieron cargar las órdenes')
-            // Fallback a datos de ejemplo
-            setOrders([
-                {
-                    id: 1,
-                    status: 'Por pagar',
-                    statusKey: 'pending',
-                    title: 'Zuecos',
-                    subtitle: 'Zuecos/Unisex',
-                    details: 'Talla 43, Color Verde Olivo',
-                    price: 'MX $2300',
-                    total: 'MX $2300 + Envío',
-                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Zuecos'
-                },
-                {
-                    id: 2,
-                    status: 'Enviado',
-                    statusKey: 'shipped',
-                    title: 'Camisa de verano',
-                    subtitle: 'Camisa de verano/Hombre',
-                    details: 'Talla M, Color caqui',
-                    price: 'MX $450',
-                    total: 'MX $450 + Envío',
-                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Camisa'
-                },
-                {
-                    id: 3,
-                    status: 'Enviado',
-                    statusKey: 'shipped',
-                    title: 'Bermudas',
-                    subtitle: 'Bermudas/Hombre',
-                    details: 'Talla 28x30, Color café oscuro',
-                    price: 'MX $700',
-                    total: 'MX $700 + Envío',
-                    image: 'https://via.placeholder.com/112x95/E5E7EB/666666?text=Bermudas'
-                }
-            ])
+            setOrders([])
         } finally {
             setLoading(false)
         }

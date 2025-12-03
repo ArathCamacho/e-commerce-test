@@ -1,37 +1,143 @@
 import { useState } from 'react'
 import { useCart } from '../../context/CartContext'
+import { useCheckout } from '../../context/CheckoutContext'
 import { useNavigate } from 'react-router-dom'
 import { PaymentFormModal } from '../account/payment/PaymentFormModal'
+import { PagoService, PedidoService, obtenerClienteLocal } from '../../services/apiservice'
 
 export function CheckoutSummary() {
-    const { cartTotal } = useCart()
+    const { cartTotal, clearCart, showNotification } = useCart()
+    const { address, paymentMethod, savePaymentMethod } = useCheckout()
     const navigate = useNavigate()
+    
     const shippingCost = 140.00
     const total = cartTotal + shippingCost
 
-    // Temporary state to track payment cards - should come from context/global state
-    const [hasPaymentCards, setHasPaymentCards] = useState(false)
     const [showPaymentModal, setShowPaymentModal] = useState(false)
-
-    const handleContinue = () => {
-        if (hasPaymentCards) {
-            // Continue with the purchase
-            navigate('/checkout-confirmation') // Or whatever the next step is
-        } else {
-            // Show modal to add payment method
-            setShowPaymentModal(true)
-        }
-    }
+    const [loading, setLoading] = useState(false)
+    const [paymentStatus, setPaymentStatus] = useState(null) // 'processing', 'success', 'error'
 
     const handleSavePayment = (paymentData) => {
         console.log('Payment data saved:', paymentData)
-        // TODO: Save to global state/context
-        // For now, just mark that we have a payment method
-        setHasPaymentCards(true)
+        savePaymentMethod(paymentData)
         setShowPaymentModal(false)
+        showNotification("Método de pago agregado correctamente", "success")
+    }
 
-        // Optionally continue with checkout automatically after adding payment
-        // navigate('/checkout-confirmation')
+    const handlePurchase = async () => {
+        try {
+            setLoading(true)
+            setPaymentStatus('processing')
+
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) {
+                showNotification("Debes iniciar sesión para completar la compra", "error")
+                setPaymentStatus('error')
+                setLoading(false)
+                return
+            }
+
+            // Validar que haya dirección
+            if (!address.id_direccion) {
+                showNotification("Por favor selecciona una dirección de envío", "error")
+                setPaymentStatus('error')
+                setLoading(false)
+                return
+            }
+
+            console.log('🛒 Iniciando proceso de compra...')
+            console.log('📍 Dirección:', address)
+            console.log('💰 Total:', total)
+
+            // PASO 1: Crear el pedido desde el carrito
+            console.log('📦 Creando pedido...')
+            const pedidoResponse = await PedidoService.crear(
+                cliente.id_cliente,
+                address.id_direccion
+            )
+
+            console.log('✅ Pedido creado:', pedidoResponse)
+
+            // PASO 2: Procesar el pago con el banco
+            // Datos hardcodeados de la tarjeta del banco
+            const datosPago = {
+                id_pedido: pedidoResponse.id_pedido,
+                numero_tarjeta_origen: "411111111115",
+                numero_tarjeta_destino: "411111111115",
+                nombre_cliente: "Arath Camacho VPV",
+                mes_exp: 12,
+                anio_exp: 2030,
+                cvv: "567",
+                monto: parseFloat(pedidoResponse.total), // Usar el total del pedido creado
+                moneda: "MXN",
+                tipo: "venta"
+            }
+
+            console.log('💳 Procesando pago con banco...')
+            const pagoResponse = await PagoService.procesar(datosPago)
+            
+            console.log('💰 Respuesta del pago:', pagoResponse)
+
+            // PASO 3: Verificar resultado del pago
+            const estadoPago = pagoResponse.estado?.toUpperCase()
+            const estadoBanco = pagoResponse.nombre_estado?.toUpperCase()
+
+            if (estadoPago === "APROBADO" || 
+                estadoBanco?.includes("ACEPTADA") || 
+                estadoBanco?.includes("COMPLETADA") ||
+                estadoBanco?.includes("EXITOSO")) {
+                
+                setPaymentStatus('success')
+                
+                console.log('✅ Pago exitoso!')
+                console.log('🎉 Pedido #' + pedidoResponse.id_pedido + ' completado')
+                
+                showNotification("¡Pago exitoso! Tu pedido ha sido procesado.", "success")
+                
+                // Limpiar carrito (ya se limpió en el backend, pero por si acaso)
+                await clearCart()
+                
+                // Esperar 2 segundos y redirigir a pedidos
+                setTimeout(() => {
+                    navigate('/account?tab=orders')
+                }, 2000)
+                
+            } else {
+                // Pago rechazado
+                setPaymentStatus('error')
+                
+                console.error('❌ Pago rechazado:', pagoResponse)
+                
+                showNotification(
+                    `Pago rechazado: ${pagoResponse.mensaje || 'Inténtalo de nuevo'}`, 
+                    "error"
+                )
+                
+                // TODO: Aquí podrías querer cancelar el pedido o marcarlo como "PAGO_FALLIDO"
+            }
+
+        } catch (error) {
+            console.error('💥 Error en el proceso de compra:', error)
+            setPaymentStatus('error')
+            
+            const errorMsg = error.response?.data?.detail || error.message || 'Error al procesar la compra'
+            showNotification(errorMsg, "error")
+            
+        } finally {
+            setLoading(false)
+            // Resetear estado visual después de 3 segundos
+            setTimeout(() => setPaymentStatus(null), 3000)
+        }
+    }
+
+    const handleContinue = () => {
+        if (paymentMethod) {
+            // Ya tiene método de pago, proceder con la compra
+            handlePurchase()
+        } else {
+            // Mostrar modal para agregar método de pago
+            setShowPaymentModal(true)
+        }
     }
 
     return (
@@ -67,18 +173,70 @@ export function CheckoutSummary() {
                     <span>${total.toFixed(2)}</span>
                 </div>
 
+                {/* Payment Status Messages */}
+                {paymentStatus === 'processing' && (
+                    <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span className="font-medium">Procesando pago...</span>
+                        </div>
+                    </div>
+                )}
+
+                {paymentStatus === 'success' && (
+                    <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium">¡Pago exitoso! Redirigiendo...</span>
+                        </div>
+                    </div>
+                )}
+
+                {paymentStatus === 'error' && (
+                    <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium">Pago rechazado</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Checkout Button */}
                 <button
                     onClick={handleContinue}
-                    className="w-full bg-black dark:bg-white text-white dark:text-black py-4 px-6 font-bold text-sm uppercase hover:bg-gray-900 dark:hover:bg-zinc-200 transition-colors mb-6"
+                    disabled={loading || cartTotal === 0}
+                    className={`w-full py-4 px-6 font-bold text-sm uppercase transition-colors mb-6 ${
+                        loading || cartTotal === 0
+                            ? 'bg-gray-400 dark:bg-zinc-700 text-gray-200 dark:text-zinc-500 cursor-not-allowed'
+                            : paymentMethod
+                            ? 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-900 dark:hover:bg-zinc-200'
+                            : 'bg-gray-900 dark:bg-zinc-700 text-white hover:bg-black dark:hover:bg-zinc-600'
+                    }`}
                 >
-                    {hasPaymentCards ? 'CONTINUAR CON LA COMPRA' : 'AÑADIR MÉTODO DE PAGO'}
+                    {loading 
+                        ? 'PROCESANDO...' 
+                        : paymentMethod 
+                        ? 'CONTINUAR CON LA COMPRA' 
+                        : 'AÑADIR MÉTODO DE PAGO'
+                    }
                 </button>
+
+                {/* Payment Info */}
+                <div className="text-xs text-gray-500 dark:text-zinc-500 text-center mb-4">
+                    Pago seguro procesado por el banco
+                </div>
 
                 {/* Payment Methods */}
                 <div className="flex items-center justify-center">
                     <img
-                        src="https://via.placeholder.com/300x40/FFFFFF/666666?text=Payment+Methods"
+                        src="https://placehold.co/300x40/FFFFFF/666666?text=Payment+Methods"
                         alt="Métodos de pago"
                         className="w-full max-w-xs"
                     />

@@ -29,15 +29,16 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add', 
                     cvv: card.cvv || ''
                 })
             } else {
+                // Auto-fill with default test data for new cards
                 setFormData({
-                    cardholderName: '',
-                    cardNumber: '',
-                    expiryDate: '',
-                    cvv: ''
+                    cardholderName: 'Arath Camacho VPV',
+                    cardNumber: '4111 1111 1115',
+                    expiryDate: '12/30',
+                    cvv: '567'
                 })
             }
             setErrors({})
-            setPaymentPreference('default') // Reset to default
+            setPaymentPreference('default') // Reset to default (already selected)
         }
     }, [isOpen, card, mode])
 

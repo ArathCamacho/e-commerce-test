@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import cartService from '../services/cartService'
+import { CarritoService, obtenerClienteLocal } from '../services/apiservice'
 
 const CartContext = createContext()
 
@@ -15,11 +15,17 @@ export function CartProvider({ children }) {
 
     const loadCart = async () => {
         try {
-            const response = await cartService.getCart()
-            setCartItems(response.data.items || [])
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) {
+                setCartItems([])
+                return
+            }
+            
+            const response = await CarritoService.obtener(cliente.id_cliente)
+            setCartItems(response.items || response.productos || [])
         } catch (error) {
             console.error('Error loading cart:', error)
-            // Si falla, continuar con carrito vacío (usuario no autenticado)
+            setCartItems([])
         }
     }
 
@@ -35,32 +41,44 @@ export function CartProvider({ children }) {
             // Actualización optimista del UI
             setCartItems(prevItems => {
                 const existingItem = prevItems.find(
-                    item => item.id === product.id &&
+                    item => item.id_producto === product.id &&
                         item.color === product.color &&
-                        item.size === product.size
+                        item.talla === product.size
                 )
                 if (existingItem) {
                     return prevItems.map(item =>
-                        item.id === product.id &&
+                        item.id_producto === product.id &&
                             item.color === product.color &&
-                            item.size === product.size
-                            ? { ...item, quantity: item.quantity + 1 }
+                            item.talla === product.size
+                            ? { ...item, cantidad: (item.cantidad || item.quantity || 0) + 1 }
                             : item
                     )
                 }
-                return [...prevItems, { ...product, quantity: 1 }]
+                return [...prevItems, {
+                    ...product,
+                    id_producto: product.id,
+                    cantidad: 1,
+                    precio_unitario: product.price || product.precio_unitario
+                }]
             })
+
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) {
+                showNotificationMsg("Debes iniciar sesión para agregar productos al carrito", "error")
+                return
+            }
 
             // Llamada al backend
-            const response = await cartService.addToCart({
-                productId: product.id,
-                quantity: 1,
-                size: product.size,
-                color: product.color
-            })
+            await CarritoService.agregar(
+                cliente.id_cliente, 
+                product.id, 
+                1, 
+                product.color, 
+                product.size
+            )
 
-            // Actualizar con datos del servidor
-            setCartItems(response.data.items || cartItems)
+            // Recargar carrito
+            await loadCart()
             showNotificationMsg("Producto agregado al carrito exitosamente", "success")
         } catch (error) {
             console.error('Error adding to cart:', error)
@@ -76,7 +94,7 @@ export function CartProvider({ children }) {
         try {
             // Encontrar el item para obtener su ID en el backend
             const item = cartItems.find(
-                i => i.id === productId && i.color === color && i.size === size
+                i => i.id_producto === productId && i.color === color && i.talla === size
             )
 
             if (!item) return
@@ -84,12 +102,15 @@ export function CartProvider({ children }) {
             // Actualización optimista
             setCartItems(prevItems =>
                 prevItems.filter(
-                    item => !(item.id === productId && item.color === color && item.size === size)
+                    item => !(item.id_producto === productId && item.color === color && item.talla === size)
                 )
             )
 
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) return
+
             // Llamada al backend
-            await cartService.removeFromCart(item.cartItemId || item.id)
+            await CarritoService.eliminarItem(item.id_item, cliente.id_cliente)
         } catch (error) {
             console.error('Error removing from cart:', error)
             showNotificationMsg("Error al eliminar producto", "error")
@@ -107,21 +128,32 @@ export function CartProvider({ children }) {
             // Actualización optimista
             setCartItems(prevItems =>
                 prevItems.map(item =>
-                    item.id === productId && item.color === color && item.size === size
-                        ? { ...item, quantity }
+                    item.id_producto === productId && item.color === color && item.talla === size
+                        ? { ...item, cantidad: quantity }
                         : item
                 )
             )
 
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) return
+
             // Encontrar el item
             const item = cartItems.find(
-                i => i.id === productId && i.color === color && i.size === size
+                i => i.id_producto === productId && i.color === color && i.talla === size
             )
 
             if (!item) return
 
-            // Llamada al backend
-            await cartService.updateCartItem(item.cartItemId || item.id, quantity)
+            // Eliminar y agregar con nueva cantidad (workaround)
+            await CarritoService.eliminarItem(item.id_item, cliente.id_cliente)
+            await CarritoService.agregar(
+                cliente.id_cliente,
+                productId,
+                quantity,
+                color,
+                item.talla
+            )
+            await loadCart()
         } catch (error) {
             console.error('Error updating quantity:', error)
             showNotificationMsg("Error al actualizar cantidad", "error")
@@ -131,20 +163,25 @@ export function CartProvider({ children }) {
 
     const clearCart = async () => {
         try {
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) return
+            
             setCartItems([])
-            await cartService.clearCart()
+            await CarritoService.vaciar(cliente.id_cliente)
         } catch (error) {
             console.error('Error clearing cart:', error)
             await loadCart()
         }
     }
 
-    const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0)
+    const cartCount = cartItems.reduce((total, item) => total + (parseInt(item.cantidad) || parseInt(item.quantity) || 0), 0)
 
-    const cartTotal = cartItems.reduce(
-        (total, item) => total + parseFloat(item.price.replace('$', '')) * item.quantity,
-        0
-    )
+    const cartTotal = cartItems.reduce((total, item) => {
+        // Usar precio_unitario del backend (siempre float) y cantidad
+        const price = parseFloat(item.precio_unitario) || 0
+        const quantity = parseInt(item.cantidad) || parseInt(item.quantity) || 0
+        return total + (price * quantity)
+    }, 0)
 
     return (
         <CartContext.Provider

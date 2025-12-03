@@ -25,7 +25,7 @@ export function ProductInfo({
         }
 
         addToCart({
-            id: '1',
+            id: product.id,
             name: product.name,
             price: product.price,
             color: currentColorData?.name,

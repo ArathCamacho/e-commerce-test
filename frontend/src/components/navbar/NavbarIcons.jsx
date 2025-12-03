@@ -2,6 +2,7 @@ import { Search, Heart, ShoppingCart, User, Moon, Sun, Menu, X } from "lucide-re
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
+import { obtenerClienteLocal, limpiarClienteLocal } from "../../services/apiservice"
 
 export function NavbarIcons({
     isMobileMenuOpen,
@@ -14,6 +15,13 @@ export function NavbarIcons({
     const { cartCount } = useCart()
     const [isAnimatingCart, setIsAnimatingCart] = useState(false)
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+    // Verificar si hay sesión activa
+    useEffect(() => {
+        const cliente = obtenerClienteLocal()
+        setIsLoggedIn(!!cliente?.id_cliente)
+    }, [])
 
     useEffect(() => {
         if (cartCount > 0) {
@@ -22,6 +30,13 @@ export function NavbarIcons({
             return () => clearTimeout(timer)
         }
     }, [cartCount])
+
+    const handleLogout = () => {
+        limpiarClienteLocal()
+        setIsLoggedIn(false)
+        setIsUserDropdownOpen(false)
+        navigate('/')
+    }
 
     return (
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
@@ -78,24 +93,35 @@ export function NavbarIcons({
 
                 {isUserDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-lg z-50">
-                        <button
-                            onClick={() => {
-                                navigate('/cuenta')
-                                setIsUserDropdownOpen(false)
-                            }}
-                            className="w-full text-left px-4 py-3 text-sm text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors uppercase"
-                        >
-                            Cuenta
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/login')
-                                setIsUserDropdownOpen(false)
-                            }}
-                            className="w-full text-left px-4 py-3 text-sm text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors uppercase border-t border-gray-200 dark:border-zinc-800"
-                        >
-                            Iniciar Sesión
-                        </button>
+                        {isLoggedIn ? (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        navigate('/cuenta')
+                                        setIsUserDropdownOpen(false)
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors uppercase"
+                                >
+                                    Cuenta
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors uppercase border-t border-gray-200 dark:border-zinc-800"
+                                >
+                                    Cerrar Sesión
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => {
+                                    navigate('/login')
+                                    setIsUserDropdownOpen(false)
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors uppercase"
+                            >
+                                Iniciar Sesión
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

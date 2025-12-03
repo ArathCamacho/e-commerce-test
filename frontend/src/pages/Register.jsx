@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ClienteService, guardarClienteLocal } from '../services/apiservice'
 
 export function Register() {
-    const [username, setUsername] = useState('')
+    const navigate = useNavigate()
+    const [nombre, setNombre] = useState('')
+    const [apellido, setApellido] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordStrength, setPasswordStrength] = useState(0)
     const [passwordFeedback, setPasswordFeedback] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
 
     const calculateStrength = (pass) => {
         let score = 0
@@ -42,10 +47,36 @@ export function Register() {
         setPasswordFeedback(getStrengthLabel(score))
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        // Handle register logic here
-        console.log('Register:', { username, email, password })
+        setError('')
+        setLoading(true)
+        
+        try {
+            // Registrar nuevo cliente con los campos correctos del backend
+            const response = await ClienteService.registrar({
+                nombre: nombre,
+                apellido: apellido,
+                correo: email,
+                contrasena: password
+            })
+
+            // Guardar datos del cliente
+            if (response.id_cliente) {
+                guardarClienteLocal(response)
+            }
+
+            // Redirigir a la página de inicio (home)
+            navigate('/')
+        } catch (error) {
+            console.error('Register error:', error)
+            const errorMessage = error.response?.data?.detail?.[0]?.msg 
+                || error.response?.data?.message 
+                || 'Error al registrar usuario. Por favor intenta de nuevo.'
+            setError(errorMessage)
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -61,17 +92,34 @@ export function Register() {
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl font-bold text-[rgb(77,76,76)] dark:text-zinc-100 mb-8">
+            <h1 className="text-2xl font-bold text-[rgb(77,76,76)] dark:text-zinc-100 mb-4">
                 Regístrate
             </h1>
+
+            {/* Error Message */}
+            {error && (
+                <div className="w-full max-w-[400px] mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded">
+                    {error}
+                </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="w-full max-w-[400px] space-y-4">
                 <input
                     type="text"
-                    placeholder="Nombre de usuario"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Nombre"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    required
+                    className="w-full h-[45px] px-4 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-base font-light focus:outline-none focus:border-[rgb(169,191,162)] transition-colors"
+                />
+
+                <input
+                    type="text"
+                    placeholder="Apellido"
+                    value={apellido}
+                    onChange={(e) => setApellido(e.target.value)}
+                    required
                     className="w-full h-[45px] px-4 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-base font-light focus:outline-none focus:border-[rgb(169,191,162)] transition-colors"
                 />
 
@@ -80,6 +128,7 @@ export function Register() {
                     placeholder="Correo electrónico"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                     className="w-full h-[45px] px-4 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-base font-light focus:outline-none focus:border-[rgb(169,191,162)] transition-colors"
                 />
 
@@ -117,13 +166,14 @@ export function Register() {
 
                 <button
                     type="submit"
-                    disabled={passwordStrength < 3}
-                    className={`w-full h-[45px] text-white text-base font-bold transition-colors mt-4 ${passwordStrength < 3
+                    disabled={passwordStrength < 3 || loading}
+                    className={`w-full h-[45px] text-white text-base font-bold transition-colors mt-4 ${
+                        passwordStrength < 3 || loading
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-[rgb(169,191,162)] hover:bg-[rgb(159,181,152)]'
-                        }`}
+                    }`}
                 >
-                    Crear cuenta
+                    {loading ? 'Creando cuenta...' : 'Crear cuenta'}
                 </button>
 
                 <div className="text-center mt-6">

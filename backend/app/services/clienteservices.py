@@ -126,8 +126,37 @@ class CarritoServices:
             logger.info(f"Carrito creado: {carrito.id_carrito} para cliente {id_cliente}")
         
         return carrito
-    
-    
+    @staticmethod
+    def obtener_carrito(db: Session, id_cliente: int) -> CarritoResponseSchema:
+        """Obtiene el carrito del cliente con todos sus items"""
+        carrito = CarritoServices.obtener_o_crear_carrito(db, id_cliente)
+        
+        # Construir respuesta con items
+        items_response = []
+        total = Decimal('0.00')
+        
+        for item in carrito.items:
+            subtotal = item.precio_unitario * item.cantidad
+            total += subtotal
+            
+            items_response.append(CarritoItemResponseSchema(
+                id_item=item.id_item,
+                id_producto=item.id_producto,
+                nombre_producto=item.producto.nombre,
+                cantidad=item.cantidad,
+                precio_unitario=float(item.precio_unitario),
+                subtotal=float(subtotal),
+                color=item.color,
+                talla=item.talla,
+                imagen=item.producto.imagen if hasattr(item.producto, 'imagen') else None
+            ))
+        
+        return CarritoResponseSchema(
+            id_carrito=carrito.id_carrito,
+            id_cliente=carrito.id_cliente,
+            items=items_response,
+            total=float(total)
+        )
     @staticmethod
     def agregar_al_carrito(db: Session, datos: CarritoAgregarSchema) -> CarritoResponseSchema:
         # Verificar que el cliente existe
@@ -142,9 +171,8 @@ class CarritoServices:
         ).first()
         
         if not producto:
-            raise HTTPException(status_code=404, detail="Producto no encontrado o inactivo")
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
         
-        # Verificar stock
         if producto.stock < datos.cantidad:
             raise HTTPException(
                 status_code=400,
@@ -157,67 +185,36 @@ class CarritoServices:
         # Verificar si el producto ya está en el carrito
         item_existente = db.query(CarritoItem).filter(
             CarritoItem.id_carrito == carrito.id_carrito,
-            CarritoItem.id_producto == datos.id_producto
+            CarritoItem.id_producto == datos.id_producto,
+            CarritoItem.color == datos.color,
+            CarritoItem.talla == datos.talla
         ).first()
         
         if item_existente:
-            # Incrementar cantidad
-            nueva_cantidad = item_existente.cantidad + datos.cantidad
-            if producto.stock < nueva_cantidad:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Stock insuficiente. Disponible: {producto.stock}"
-                )
-            item_existente.cantidad = nueva_cantidad
-            logger.info(f"Cantidad actualizada en carrito: Producto {datos.id_producto} -> {nueva_cantidad}")
+            # Actualizar cantidad
+            item_existente.cantidad += datos.cantidad
         else:
             # Crear nuevo item
             nuevo_item = CarritoItem(
                 id_carrito=carrito.id_carrito,
                 id_producto=datos.id_producto,
                 cantidad=datos.cantidad,
-                precio_unitario=producto.precio
+                precio_unitario=producto.precio,
+                color=datos.color,
+                talla=datos.talla
             )
             db.add(nuevo_item)
-            logger.info(f"Producto agregado al carrito: {datos.id_producto} x{datos.cantidad}")
         
         db.commit()
         db.refresh(carrito)
+        
+        logger.info(f"Producto {datos.id_producto} agregado al carrito {carrito.id_carrito}")
         
         return CarritoServices.obtener_carrito(db, datos.id_cliente)
     
     
     @staticmethod
-    def obtener_carrito(db: Session, id_cliente: int) -> CarritoResponseSchema:
-        carrito = CarritoServices.obtener_o_crear_carrito(db, id_cliente)
-        
-        items_response = []
-        total = 0.0
-        
-        for item in carrito.items:
-            subtotal = float(item.precio_unitario) * item.cantidad
-            total += subtotal
-            
-            items_response.append(CarritoItemResponseSchema(
-                id_item=item.id_item,
-                id_producto=item.id_producto,
-                nombre_producto=item.producto.nombre,
-                cantidad=item.cantidad,
-                precio_unitario=float(item.precio_unitario),
-                subtotal=subtotal
-            ))
-        
-        return CarritoResponseSchema(
-            id_carrito=carrito.id_carrito,
-            id_cliente=carrito.id_cliente,
-            items=items_response,
-            total=total
-        )
-    
-    
-    @staticmethod
     def eliminar_item(db: Session, id_item: int, id_cliente: int):
-        # Buscar el item
         item = db.query(CarritoItem).filter(CarritoItem.id_item == id_item).first()
         
         if not item:

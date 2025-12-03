@@ -26,7 +26,7 @@ export function SearchOverlay({ isOpen, searchQuery, setSearchQuery, scrollOpaci
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Buscar productos..."
-                        className="w-full px-6 py-4 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-500 dark:placeholder-zinc-400 focus:outline-none transition-all duration-300 border-b-[6px] border-transparent focus:border-[#A9BFA2] caret-green"
+                        className="w-full px-6 py-4 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-500 dark:placeholder-zinc-400 focus:outline-none transition-all duration-300 border-b-[6px] border-transparent focus:border-[#A9BFA2]"
                         style={{
                             caretColor: '#A9BFA2'
                         }}
@@ -34,12 +34,6 @@ export function SearchOverlay({ isOpen, searchQuery, setSearchQuery, scrollOpaci
                     <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 pointer-events-none" />
                 </div>
             </div>
-
-            <style jsx>{`
-                .caret-green {
-                    caret-color: #A9BFA2;
-                }
-            `}</style>
         </div>
     )
 }

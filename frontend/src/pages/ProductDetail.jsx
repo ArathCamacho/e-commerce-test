@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react"
+import { useParams } from "react-router-dom"
 import { ProductImage } from "../components/product-detail/ProductImage"
 import { ProductInfo } from "../components/product-detail/ProductInfo"
+import { ProductoService } from "../services/apiservice"
 
 export function ProductDetail() {
+    const { id } = useParams()
+    const [product, setProduct] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    
     // Estado inicial null para que no haya selección por defecto
     const [selectedColor, setSelectedColor] = useState(null)
     const [selectedSize, setSelectedSize] = useState(null)
@@ -15,42 +22,71 @@ export function ProductDetail() {
         }
     }, [])
 
-    const product = {
-        name: "PLAYERA POLO SLIM FIT TEXTURIZADA",
-        price: "$499.00",
-        colors: [
-            {
-                id: "verde-olivo",
-                name: "Verde Olivo",
-                image: "https://via.placeholder.com/800x1000/9CA986/FFFFFF?text=Verde+Olivo",
-                thumbnail: "https://via.placeholder.com/100x120/9CA986/FFFFFF?text=V"
-            },
-            {
-                id: "beige",
-                name: "Beige",
-                image: "https://via.placeholder.com/800x1000/C8B896/FFFFFF?text=Beige",
-                thumbnail: "https://via.placeholder.com/100x120/C8B896/FFFFFF?text=B"
-            },
-            {
-                id: "gris",
-                name: "Gris",
-                image: "https://via.placeholder.com/800x1000/6B7280/FFFFFF?text=Gris",
-                thumbnail: "https://via.placeholder.com/100x120/6B7280/FFFFFF?text=G"
-            },
-            {
-                id: "blanco",
-                name: "Blanco",
-                image: "https://via.placeholder.com/800x1000/F3F4F6/333333?text=Blanco",
-                thumbnail: "https://via.placeholder.com/100x120/F3F4F6/333333?text=B"
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                setLoading(true)
+                const data = await ProductoService.obtenerPorId(id)
+                
+                // Adaptar datos del backend al formato esperado por el componente
+                // El backend devuelve: { id, nombre, precio, imagen, categoria, ... }
+                // Necesitamos simular colores y tallas si no vienen del backend
+                
+                const adaptedProduct = {
+                    id: data.id,
+                    name: data.nombre || data.name,
+                    price: typeof data.precio === 'number' ? `$${data.precio.toFixed(2)}` : data.precio,
+                    description: data.descripcion,
+                    // Usar imagen del producto o placeholder
+                    image: data.imagen || data.image || "https://placehold.co/800x1000/E5E7EB/333333?text=No+Image",
+                    // Simular variantes si no existen
+                    colors: [
+                        {
+                            id: "default",
+                            name: "Único",
+                            image: data.imagen || data.image || "https://placehold.co/800x1000/E5E7EB/333333?text=No+Image",
+                            thumbnail: data.imagen || data.image || "https://placehold.co/100x120/E5E7EB/333333?text=Unique"
+                        }
+                    ],
+                    sizes: [
+                        { name: "XCH", inStock: true },
+                        { name: "CH", inStock: true },
+                        { name: "M", inStock: true },
+                        { name: "XG", inStock: true },
+                        { name: "XXG", inStock: false }
+                    ]
+                }
+                
+                setProduct(adaptedProduct)
+                // Seleccionar color por defecto
+                setSelectedColor("default")
+            } catch (err) {
+                console.error("Error loading product:", err)
+                setError("No se pudo cargar el producto")
+            } finally {
+                setLoading(false)
             }
-        ],
-        sizes: [
-            { name: "XCH", inStock: true },
-            { name: "CH", inStock: true },
-            { name: "M", inStock: true },
-            { name: "XG", inStock: true },
-            { name: "XXG", inStock: false }
-        ]
+        }
+
+        if (id) {
+            fetchProduct()
+        }
+    }, [id])
+
+    if (loading) {
+        return (
+            <div className="h-[calc(100vh-73px)] flex items-center justify-center bg-white dark:bg-zinc-900">
+                <p className="text-gray-600 dark:text-zinc-400">Cargando producto...</p>
+            </div>
+        )
+    }
+
+    if (error || !product) {
+        return (
+            <div className="h-[calc(100vh-73px)] flex items-center justify-center bg-white dark:bg-zinc-900">
+                <p className="text-red-600 dark:text-red-400">{error || "Producto no encontrado"}</p>
+            </div>
+        )
     }
 
     // Si hay color seleccionado, usamos sus datos. Si no, usamos el primero por defecto para la imagen principal (pero sin seleccionarlo)

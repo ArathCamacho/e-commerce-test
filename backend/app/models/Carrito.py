@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Numeric
+
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Numeric, String
 from sqlalchemy.orm import relationship
 from database import Base
 from pydantic import BaseModel
@@ -25,6 +26,8 @@ class CarritoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
     id_producto = Column(Integer, ForeignKey("producto.id_producto"), nullable=False)
     cantidad = Column(Integer, nullable=False)
     precio_unitario = Column(Numeric(10, 2), nullable=False)
+    color = Column(String(50), nullable=True)
+    talla = Column(String(20), nullable=True)
     
     # Relaciones
     carrito = relationship("Carrito", back_populates="items")
@@ -36,6 +39,8 @@ class CarritoAgregarSchema(BaseModel):
     id_cliente: int
     id_producto: int
     cantidad: int
+    color: str = None
+    talla: str = None
 
 class CarritoItemResponseSchema(BaseModel):
     id_item: int
@@ -44,6 +49,9 @@ class CarritoItemResponseSchema(BaseModel):
     cantidad: int
     precio_unitario: float
     subtotal: float
+    color: str | None = None
+    talla: str | None = None
+    imagen: str | None = None  # ← Cambiado para aceptar None correctamente
 
 class CarritoResponseSchema(BaseModel):
     id_carrito: int

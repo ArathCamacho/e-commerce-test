@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import authService from '../services/authService'
+import { ClienteService, guardarClienteLocal } from '../services/apiservice'
 
 export function Login() {
     const navigate = useNavigate()
@@ -15,14 +15,15 @@ export function Login() {
         setLoading(true)
 
         try {
-            const response = await authService.login(email, password)
+            const response = await ClienteService.login(email, password)
 
-            // Guardar token y datos del usuario
-            localStorage.setItem('token', response.data.token)
-            localStorage.setItem('user', JSON.stringify(response.data.user))
+            // Guardar datos del cliente
+            if (response.id_cliente) {
+                guardarClienteLocal(response)
+            }
 
-            // Redirigir a la cuenta
-            navigate('/account')
+            // Redirigir a la página de inicio (home)
+            navigate('/')
         } catch (error) {
             const errorMessage = error.response?.data?.message || 'Error al iniciar sesión. Por favor verifica tus credenciales.'
             setError(errorMessage)

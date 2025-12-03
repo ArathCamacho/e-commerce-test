@@ -5,30 +5,6 @@ import { ConfirmationModal } from '../common/ConfirmationModal'
 import { useAddressManagement } from './address/useAddressManagement'
 import { ADDRESS_CONTAINER_MAX_WIDTH } from '../../utils/constants'
 
-// Initial sample data
-const INITIAL_ADDRESSES = [
-    {
-        id: 1,
-        name: 'Sebastian',
-        phone: '+52 662 122 29 43',
-        street: 'Playa Grande',
-        details: 'Playa Grande #15 Colonia Plaza Grande',
-        city: 'Hermosillo, Sonora, México',
-        postalCode: '83125',
-        isDefault: true
-    },
-    {
-        id: 2,
-        name: 'Sebastian',
-        phone: '+52 662 122 29 43',
-        street: 'Playa Grande',
-        details: 'Playa Grande #15 Colonia Plaza Grande',
-        city: 'Hermosillo, Sonora, México',
-        postalCode: '83125',
-        isDefault: false
-    }
-]
-
 export function ShippingAddresses() {
     // Use custom hook for address management
     const {
@@ -39,7 +15,7 @@ export function ShippingAddresses() {
         setDefaultAddress,
         getAddressById,
         unsetDefaultAddress
-    } = useAddressManagement(INITIAL_ADDRESSES)
+    } = useAddressManagement()
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false)

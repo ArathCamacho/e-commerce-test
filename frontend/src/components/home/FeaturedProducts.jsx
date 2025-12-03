@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { useLikes } from '../../context/LikesContext'
-import productService from '../../services/productService'
+import { ProductoService } from '../../services/apiservice'
 
 export function FeaturedProducts() {
     const { toggleLike, checkIsLiked } = useLikes()
@@ -14,8 +14,9 @@ export function FeaturedProducts() {
         const fetchProducts = async () => {
             try {
                 setLoading(true)
-                const response = await productService.getFeaturedProducts(8)
-                setProducts(response.data)
+                const response = await ProductoService.obtenerCatalogo()
+                const productList = response.productos || response || []
+                setProducts(productList.slice(0, 8))
             } catch (error) {
                 console.error('Error loading featured products:', error)
                 setError('No se pud ieron cargar los productos')

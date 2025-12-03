@@ -58,7 +58,7 @@ export function CartSummary() {
             {/* Payment Methods */}
             <div className="flex items-center justify-center">
                 <img
-                    src="https://via.placeholder.com/300x40/FFFFFF/666666?text=Payment+Methods"
+                    src="https://placehold.co/300x40/FFFFFF/666666?text=Payment+Methods"
                     alt="Métodos de pago"
                     className="w-full max-w-xs"
                 />

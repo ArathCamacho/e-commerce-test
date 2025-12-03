@@ -4,6 +4,7 @@ import { AccountSidebar } from '../components/account/AccountSidebar'
 import { OrdersList } from '../components/account/OrdersList'
 import { ShippingAddresses } from '../components/account/ShippingAddresses'
 import { PaymentMethods } from '../components/account/PaymentMethods'
+import { GeneralProfile } from '../components/account/GeneralProfile'
 
 export function Account() {
     const navigate = useNavigate()
@@ -175,7 +176,9 @@ export function Account() {
 
                     {activeSection === 'metodos-pago' && <PaymentMethods />}
 
-                    {activeSection !== 'pedidos' && activeSection !== 'domicilios' && activeSection !== 'metodos-pago' && (
+                    {activeSection === 'general' && <GeneralProfile />}
+
+                    {activeSection !== 'pedidos' && activeSection !== 'domicilios' && activeSection !== 'metodos-pago' && activeSection !== 'general' && (
                         <div className="bg-white dark:bg-zinc-900 p-12 text-center w-full">
                             <p className="text-[rgb(77,76,76)] dark:text-zinc-400 text-base font-light">
                                 Sección "{getSectionLabel()}" en construcción

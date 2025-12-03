@@ -2,28 +2,14 @@ import { useState } from 'react'
 import { EditInfoModal } from './EditInfoModal'
 import { EditAddressModal } from './EditAddressModal'
 import { EditShippingModal } from './EditShippingModal'
+import { useCheckout } from '../../context/CheckoutContext'
 
 export function CheckoutInfo() {
+    const { userInfo, address, shipping, updateUserInfo, updateAddress, updateShipping } = useCheckout()
+    
     const [infoModalOpen, setInfoModalOpen] = useState(false)
     const [addressModalOpen, setAddressModalOpen] = useState(false)
     const [shippingModalOpen, setShippingModalOpen] = useState(false)
-
-    const [userInfo, setUserInfo] = useState({
-        name: 'Sebastián Sotelo Rodríguez',
-        email: 'sebastian05@gmail.com'
-    })
-
-    const [address, setAddress] = useState({
-        street: 'Calle Siempre viva #54',
-        zipCode: '83125',
-        city: 'Hermosillo',
-        country: 'México'
-    })
-
-    const [shipping, setShipping] = useState({
-        name: 'Sebastián Sotelo Rodríguez',
-        phone: '+52 662 154 5465'
-    })
 
     return (
         <>
@@ -91,21 +77,21 @@ export function CheckoutInfo() {
             <EditInfoModal
                 isOpen={infoModalOpen}
                 onClose={() => setInfoModalOpen(false)}
-                onSave={setUserInfo}
+                onSave={updateUserInfo}
                 initialData={userInfo}
             />
 
             <EditAddressModal
                 isOpen={addressModalOpen}
                 onClose={() => setAddressModalOpen(false)}
-                onSave={setAddress}
+                onSave={updateAddress}
                 initialData={address}
             />
 
             <EditShippingModal
                 isOpen={shippingModalOpen}
                 onClose={() => setShippingModalOpen(false)}
-                onSave={setShipping}
+                onSave={updateShipping}
                 initialData={shipping}
             />
         </>

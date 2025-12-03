@@ -111,7 +111,7 @@ export function AccountSidebar({ activeSection, onSectionChange, isOpen = false,
                     </p>
                     <div className="flex justify-center">
                         <img
-                            src="https://via.placeholder.com/185x185/E5E7EB/9CA3AF?text=QR+Code"
+                            src="https://placehold.co/185x185/E5E7EB/9CA3AF?text=QR+Code"
                             alt="QR Code"
                             className="w-[185px] h-[185px]"
                         />
