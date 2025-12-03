@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // Configuración base de la API
-//const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8003/api";
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8003/api";
+//const API_BASE_URL = import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api";
 
 // Crear instancia de axios con configuración base
 const apiClient = axios.create({

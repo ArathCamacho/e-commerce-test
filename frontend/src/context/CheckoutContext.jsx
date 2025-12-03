@@ -51,7 +51,7 @@ export function CheckoutProvider({ children }) {
             if (!cliente?.id_cliente) return
 
             const direcciones = await DireccionService.obtener(cliente.id_cliente)
-            
+
             // Si hay direcciones, usar la primera como predeterminada
             if (direcciones && direcciones.length > 0) {
                 const dir = direcciones[0]
@@ -60,7 +60,8 @@ export function CheckoutProvider({ children }) {
                     street: dir.calle,
                     zipCode: dir.codigo_postal,
                     city: dir.ciudad,
-                    country: dir.estado || 'México'
+                    state: dir.estado,
+                    country: 'México' // Hardcodeado por ahora
                 })
             }
         } catch (error) {
