@@ -10,7 +10,7 @@ from app.models.Pago import (
     PagoSolicitud,
     PagoRespuesta,
     PagoIniciarSchema,
-    PagoFrontendSchema,  # ← NUEVO: Schema sin tarjeta destino
+    PagoFrontendSchema,  # ← NUEVO
     BancoSolicitudSchema,
     BancoRespuestaSchema,
     PagoResponseSchema

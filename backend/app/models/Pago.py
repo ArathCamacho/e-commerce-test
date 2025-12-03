@@ -58,7 +58,6 @@ class PagoRespuesta(Base):
     id_respuesta = Column(Integer, primary_key=True, index=True)
     id_pago = Column(Integer, ForeignKey("pago.id_pago"), nullable=False, unique=True)
     
-
     creada_utc = Column(DateTime, nullable=True)
     id_transaccion = Column(String(100), nullable=True)
     tipo_transaccion = Column(String(50), nullable=True)
@@ -74,11 +73,14 @@ class PagoRespuesta(Base):
     pago = relationship("Pago", back_populates="respuesta")
 
 
+# ==================== SCHEMAS PYDANTIC ====================
+
 
 class PagoFrontendSchema(BaseModel):
     """
-    Lo que el FRONTEND envía para procesar un pago
-    NO incluye tarjeta destino (se hardcodea en el backend)
+    🌐 LO QUE EL FRONTEND ENVÍA
+    El cliente solo proporciona los datos de SU tarjeta.
+    La tarjeta destino se agrega automáticamente en el backend.
     """
     numero_tarjeta_origen: str
     nombre_cliente: str
@@ -106,8 +108,44 @@ class PagoFrontendSchema(BaseModel):
         }
 
 
-class BancoSolicitudSchema(BaseModel):
+class PagoIniciarSchema(BaseModel):
+    """
+    🔧 SCHEMA INTERNO COMPLETO
+    Usado internamente en el backend, incluye ambas tarjetas.
+    """
+    numero_tarjeta_origen: str
+    numero_tarjeta_destino: str
+    nombre_cliente: str
+    mes_exp: int
+    anio_exp: int
+    cvv: str
+    monto: float
+    moneda: str = "MXN"
+    tipo: str = "venta"
+    id_pedido: Optional[int] = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "numero_tarjeta_origen": "5555555555554444",
+                "numero_tarjeta_destino": "4111111111111115",
+                "nombre_cliente": "Arath Camacho",
+                "mes_exp": 12,
+                "anio_exp": 2028,
+                "cvv": "111",
+                "monto": 199.99,
+                "moneda": "MXN",
+                "tipo": "venta",
+                "id_pedido": 1
+            }
+        }
 
+
+class BancoSolicitudSchema(BaseModel):
+    """
+    🏦 FORMATO QUE ESPERA EL BANCO (PascalCase)
+    Se usa para convertir los datos antes de enviarlos.
+    """
     NumeroTarjetaOrigen: str = Field(alias="numero_tarjeta_origen")
     NumeroTarjetaDestino: str = Field(alias="numero_tarjeta_destino")
     NombreCliente: str = Field(alias="nombre_cliente")
@@ -121,9 +159,11 @@ class BancoSolicitudSchema(BaseModel):
 
 
 class BancoRespuestaSchema(BaseModel):
-
+    """
+    🏦 FORMATO QUE DEVUELVE EL BANCO (PascalCase)
+    """
     CreadaUTC: str
-    IdTransaccion: str  # ← Cambiado de id_transaccion a IdTransaccion
+    IdTransaccion: str
     TipoTransaccion: str
     MontoTransaccion: float
     MarcaTarjeta: Optional[str] = None
@@ -135,7 +175,10 @@ class BancoRespuestaSchema(BaseModel):
 
 
 class PagoResponseSchema(BaseModel):
-    """Lo que devuelves al frontend"""
+    """
+    📤 LO QUE SE DEVUELVE AL FRONTEND
+    Información completa del pago procesado.
+    """
     id_pago: int
     id_pedido: Optional[int] = None
     monto: float
