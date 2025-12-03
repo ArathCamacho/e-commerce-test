@@ -243,35 +243,7 @@ class PagoServices:
                 "Monto": datos.monto
             }
 
-            PagoServices._guardar_request_json(solicitud, datos_dict, db)
 
-            # SIMULACIÓN DE PAGO EXITOSO para datos de prueba
-            # Si es la tarjeta de prueba "411111111115", simular pago exitoso
-            if datos.numero_tarjeta_origen == "411111111115":
-                logger.info("🔧 SIMULANDO PAGO EXITOSO para tarjeta de prueba")
-                respuesta_simulada = {
-                    "CreadaUTC": "2025-12-03T05:21:38.302Z",
-                    "IdTransaccion": f"TRX-SIM-{pago.id_pago}",
-                    "TipoTransaccion": "Venta",
-                    "MontoTransaccion": float(datos.monto),
-                    "NumeroTarjeta": "**** **** **** 1115",
-                    "NombreEstado": "ACEPTADA",
-                    "Firma": "SIMULADO",
-                    "Descripcion": "Pago simulado exitoso"
-                }
-                PagoServices._procesar_respuesta_exitosa(pago, respuesta_simulada, db)
-            else:
-                # Para otras tarjetas, usar la API real
-                response = await PagoServices._enviar_solicitud_banco(datos_dict)
-
-                if response.status_code in [200, 201]:
-                    respuesta = response.json()
-                    PagoServices._procesar_respuesta_exitosa(pago, respuesta, db)
-                else:
-                    PagoServices._procesar_error_http(pago, response, db)
-            
-            db.refresh(pago)
-            db.refresh(solicitud)
 
             try:
                 return PagoResponseSchema(
