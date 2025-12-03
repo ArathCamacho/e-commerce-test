@@ -10,7 +10,7 @@ from app.models.Pago import (
     PagoSolicitud,
     PagoRespuesta,
     PagoIniciarSchema,
-    PagoFrontendSchema,  # ← NUEVO
+    PagoFrontendSchema,
     BancoSolicitudSchema,
     BancoRespuestaSchema,
     PagoResponseSchema
@@ -20,7 +20,7 @@ from app.models.Pago import (
 logger = logging.getLogger(__name__)
 
 PAGOS_API_URL = "https://bancarata.vercel.app/api/bank"
-MI_TARJETA_DESTINO = "4111111111111115"  # ← Tu tarjeta que recibe los pagos
+MI_TARJETA_DESTINO = "4111111111111115"
 
 
 class PagoServices:
@@ -76,6 +76,87 @@ class PagoServices:
         
         logger.info(f"Enviando a: {PAGOS_API_URL}")
         logger.debug(f"Payload: {json.dumps(datos_dict, ensure_ascii=False)}")
+    
+    
+    @staticmethod
+    async def _crear_envio_automatico(db: Session, pago: Pago):
+        """
+        📦 CREAR ENVÍO AUTOMÁTICAMENTE DESPUÉS DE PAGO APROBADO
+        
+        Args:
+            db: Sesión de base de datos
+            pago: Objeto Pago ya aprobado
+        """
+        try:
+            from app.models.Pedido import Pedido
+            from app.models.Cliente import Cliente
+            from app.models.Direccion import Direccion
+            from app.models.Envio import EnvioSolicitudSchema, DatosClienteEnvioSchema, ProductoEnvioSchema
+            from app.services.envioservices import EnvioServices
+            
+            # Obtener el pedido completo
+            pedido = db.query(Pedido).filter(Pedido.id_pedido == pago.id_pedido).first()
+            if not pedido:
+                logger.error(f"No se encontró pedido {pago.id_pedido} para crear envío")
+                return
+            
+            # Obtener datos del cliente
+            cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
+            if not cliente:
+                logger.error(f"No se encontró cliente {pedido.id_cliente}")
+                return
+            
+            # Obtener dirección
+            direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
+            if not direccion:
+                logger.error(f"No se encontró dirección {pedido.id_direccion}")
+                return
+            
+            # Construir dirección completa
+            direccion_completa = f"{direccion.calle}, {direccion.ciudad}, {direccion.estado}, CP {direccion.codigo_postal}"
+            
+            # Construir lista de productos
+            productos_envio = []
+            for item in pedido.items:
+                productos_envio.append(ProductoEnvioSchema(
+                    sku=f"PROD-{item.id_producto}",
+                    nombre=item.producto.nombre,
+                    cantidad=item.cantidad,
+                    precio_unitario=float(item.precio_unitario)
+                ))
+            
+            # Crear solicitud de envío
+            envio_solicitud = EnvioSolicitudSchema(
+                id_orden_externa=f"PEDIDO-{pedido.id_pedido}",
+                id_orden_original=f"P-{pedido.id_pedido}",
+                servicio_origen="ecommerce",
+                webhook_url="https://e-commerce-test-mm6o.onrender.com/api/envios/webhook",
+                datos_cliente=DatosClienteEnvioSchema(
+                    nombre=f"{cliente.nombre} {cliente.apellido}",
+                    telefono=cliente.telefono or "0000000000",
+                    email=cliente.correo,
+                    direccion=direccion_completa
+                ),
+                productos=productos_envio
+            )
+            
+            logger.info(f"🚚 Creando envío automático para pedido {pedido.id_pedido}")
+            
+            # Llamar al servicio de envíos
+            envio_response = await EnvioServices.crear_envio(db, envio_solicitud)
+            
+            # Actualizar el envío con el id_pedido correcto
+            from app.models.Envio import Envio
+            envio = db.query(Envio).filter(Envio.id_envio == envio_response.id_envio).first()
+            if envio:
+                envio.id_pedido = pedido.id_pedido
+                db.commit()
+                logger.info(f"✅ Envío {envio.id_envio} creado y vinculado a pedido {pedido.id_pedido}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error al crear envío automático: {str(e)}")
+            logger.exception("Detalles del error:")
+            # No lanzamos excepción para que el pago se complete aunque falle el envío
     
     
     @staticmethod
@@ -247,6 +328,7 @@ class PagoServices:
         4. Envía POST al banco
         5. Crea respuesta con lo que el banco regresa
         6. Actualiza estado del pago
+        7. ✨ SI EL PAGO ES APROBADO → Crea envío automáticamente
         
         Args:
             db: Sesión de base de datos
@@ -302,6 +384,11 @@ class PagoServices:
             
             # 7. Refrescar para obtener los datos actualizados
             db.refresh(pago)
+            
+            # 🚚 ✨ NUEVO: Si el pago fue aprobado, crear envío automáticamente
+            if pago.estado == "APROBADO" and pago.id_pedido:
+                logger.info(f"💳 Pago aprobado, iniciando creación de envío para pedido {pago.id_pedido}")
+                await PagoServices._crear_envio_automatico(db, pago)
             
             # 8. Construir respuesta
             return PagoResponseSchema(

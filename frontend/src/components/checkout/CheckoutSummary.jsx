@@ -6,7 +6,6 @@ import { PaymentFormModal } from '../account/payment/PaymentFormModal'
 import { 
     PagoService, 
     PedidoService, 
-    EnvioService,  // ← Importar EnvioService
     obtenerClienteLocal 
 } from '../../services/apiservice'
 
@@ -95,63 +94,16 @@ export function CheckoutSummary() {
             if (estadoPago === "APROBADO" || estadoPago === "COMPLETADO") {
                 
                 console.log('✅ Pago exitoso!')
+                console.log('📦 El backend está creando el envío automáticamente...')
 
-                // ========================================
-                // PASO 4: Crear el envío (NUEVO)
-                // ========================================
-                try {
-                    console.log('📮 Creando solicitud de envío...')
-
-                    // Generar ID único para el envío
-                    const idOrdenExterna = `ECM-${Date.now()}-${pedidoResponse.id_pedido}`
-
-                    // Preparar productos para el sistema de envíos
-                    const productosEnvio = cart.items.map(item => ({
-                        sku: `PROD-${item.producto.id}`,
-                        nombre: item.producto.nombre,
-                        cantidad: item.cantidad,
-                        precio_unitario: parseFloat(item.producto.precio)
-                    }))
-
-                    // Preparar datos del envío
-                    const datosEnvio = {
-                        id_orden_externa: idOrdenExterna,
-                        id_orden_original: `P-${pedidoResponse.id_pedido}`,
-                        servicio_origen: "ecommerce",
-                        webhook_url: `${import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api"}/envios/webhook`,
-                        datos_cliente: {
-                            nombre: cliente.nombre || "Cliente",
-                            telefono: cliente.telefono || "0000000000",
-                            email: cliente.correo || "cliente@email.com",
-                            direccion: address.direccion_completa || 
-                                      `${address.calle || ''} ${address.numero_ext || ''}, ${address.colonia || ''}, ${address.ciudad || ''}`
-                        },
-                        productos: productosEnvio
-                    }
-
-                    console.log('📤 Enviando solicitud de envío:', datosEnvio)
-
-                    const envioResponse = await EnvioService.crear(datosEnvio)
-                    
-                    console.log('✅ Envío creado:', envioResponse)
-                    console.log('📍 Código de seguimiento:', envioResponse.codigo_seguimiento)
-
-                } catch (envioError) {
-                    // El pago ya fue exitoso, pero el envío falló
-                    console.error('⚠️ Error al crear envío (pero pago exitoso):', envioError)
-                    
-                    // Notificar al usuario que el pago fue exitoso pero hay un problema con el envío
-                    showNotification(
-                        "Pago exitoso. Hubo un problema al crear el envío, por favor contacta a soporte.",
-                        "warning"
-                    )
-                }
-
-                // ========================================
-                // PASO 5: Finalizar proceso
-                // ========================================
+                // ✨ YA NO CREAMOS EL ENVÍO MANUALMENTE
+                // El backend lo hace automáticamente en PagoServices._crear_envio_automatico()
+                
                 setPaymentStatus('success')
-                showNotification("¡Compra exitosa! Tu pedido ha sido procesado.", "success")
+                showNotification(
+                    "¡Compra exitosa! Tu pedido y envío han sido procesados.", 
+                    "success"
+                )
 
                 // Limpiar carrito
                 await clearCart()
@@ -238,7 +190,7 @@ export function CheckoutSummary() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span className="font-medium">Procesando pago y envío...</span>
+                            <span className="font-medium">Procesando pago y creando envío...</span>
                         </div>
                     </div>
                 )}
