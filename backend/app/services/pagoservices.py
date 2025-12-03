@@ -144,7 +144,23 @@ class PagoServices:
     
     @staticmethod
     def _procesar_error_http(pago: Pago, response: httpx.Response, db: Session):
-        """Procesa errores HTTP (404, 422, 500, etc.)"""
+        """
+        Procesa errores HTTP (404, 422, 500, etc.)
+        IMPORTANTE: Si es un 400 con JSON válido del banco, lo procesamos como respuesta válida
+        """
+        try:
+            # Intentar parsear como respuesta del banco
+            respuesta_json = response.json()
+            
+            # Si tiene la estructura de respuesta del banco, procesarla
+            if 'IdTransaccion' in respuesta_json and 'NombreEstado' in respuesta_json:
+                logger.warning(f"Banco respondió con {response.status_code} pero tiene estructura válida. Procesando...")
+                PagoServices._procesar_respuesta_exitosa(pago, respuesta_json, db)
+                return
+        except:
+            pass  # No es JSON válido del banco, continuar con error
+        
+        # Si llegamos aquí, es un error real
         pago.estado = "ERROR"
         
         try:
@@ -209,6 +225,7 @@ class PagoServices:
         
         logger.info(f"Iniciando pago: ${datos.monto} {datos.moneda}")
         
+        # Validar pedido si existe
         if datos.id_pedido:
             from app.models.Pedido import Pedido
             pedido = db.query(Pedido).filter(Pedido.id_pedido == datos.id_pedido).first()
@@ -218,21 +235,14 @@ class PagoServices:
                     detail=f"Pedido {datos.id_pedido} no encontrado"
                 )
 
+        # 1. Crear registro de pago
         pago = PagoServices._crear_registro_pendiente(db, datos)
         
+        # 2. Crear solicitud
         solicitud = PagoServices._crear_solicitud(db, pago, datos)
         
         try:
-            datos_banco = BancoSolicitudSchema(
-                numero_tarjeta_origen=datos.numero_tarjeta_origen,
-                numero_tarjeta_destino=datos.numero_tarjeta_destino,
-                nombre_cliente=datos.nombre_cliente,
-                mes_exp=datos.mes_exp,
-                anio_exp=datos.anio_exp,
-                cvv=datos.cvv,
-                monto=datos.monto
-            )
-            
+            # 3. Preparar datos en formato PascalCase para el banco
             datos_dict = {
                 "NumeroTarjetaOrigen": datos.numero_tarjeta_origen,
                 "NumeroTarjetaDestino": datos.numero_tarjeta_destino,
@@ -242,28 +252,39 @@ class PagoServices:
                 "Cvv": datos.cvv,
                 "Monto": datos.monto
             }
-
-
-
-            try:
-                return PagoResponseSchema(
-                    id_pago=pago.id_pago,
-                    id_pedido=pago.id_pedido,
-                    monto=pago.monto,
-                    moneda=pago.moneda,
-                    estado=pago.estado,
-                    metodo=pago.metodo,
-                    fecha=pago.fecha,
-                    numero_tarjeta_origen=solicitud.numero_tarjeta_origen,
-                    nombre_cliente=solicitud.nombre_cliente,
-                    id_transaccion=pago.respuesta.id_transaccion if pago.respuesta else None,
-                    nombre_estado=pago.respuesta.nombre_estado if pago.respuesta else None,
-                    mensaje=pago.respuesta.mensaje if pago.respuesta else None
-                )
-            except Exception as e:
-                db.rollback()
-                logger.error(f"Error construyendo respuesta: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Error construyendo respuesta: {str(e)}")
+            
+            # 4. Guardar request para auditoría
+            PagoServices._guardar_request_json(solicitud, datos_dict, db)
+            
+            # 5. Enviar al banco
+            response = await PagoServices._enviar_solicitud_banco(datos_dict)
+            
+            # 6. Procesar respuesta
+            if response.status_code in [200, 201]:
+                respuesta_json = response.json()
+                PagoServices._procesar_respuesta_exitosa(pago, respuesta_json, db)
+            else:
+                # Puede ser un 400 con respuesta válida del banco o un error real
+                PagoServices._procesar_error_http(pago, response, db)
+            
+            # 7. Refrescar para obtener los datos actualizados
+            db.refresh(pago)
+            
+            # 8. Construir respuesta
+            return PagoResponseSchema(
+                id_pago=pago.id_pago,
+                id_pedido=pago.id_pedido,
+                monto=pago.monto,
+                moneda=pago.moneda,
+                estado=pago.estado,
+                metodo=pago.metodo,
+                fecha=pago.fecha,
+                numero_tarjeta_origen=solicitud.numero_tarjeta_origen,
+                nombre_cliente=solicitud.nombre_cliente,
+                id_transaccion=pago.respuesta.id_transaccion if pago.respuesta else None,
+                nombre_estado=pago.respuesta.nombre_estado if pago.respuesta else None,
+                mensaje=pago.respuesta.mensaje if pago.respuesta else None
+            )
             
         except httpx.TimeoutException as e:
             db.rollback()  
