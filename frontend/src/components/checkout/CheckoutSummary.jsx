@@ -3,10 +3,15 @@ import { useCart } from '../../context/CartContext'
 import { useCheckout } from '../../context/CheckoutContext'
 import { useNavigate } from 'react-router-dom'
 import { PaymentFormModal } from '../account/payment/PaymentFormModal'
-import { PagoService, PedidoService, obtenerClienteLocal } from '../../services/apiservice'
+import { 
+    PagoService, 
+    PedidoService, 
+    EnvioService,  // ← Importar EnvioService
+    obtenerClienteLocal 
+} from '../../services/apiservice'
 
 export function CheckoutSummary() {
-    const { cartTotal, clearCart, showNotification } = useCart()
+    const { cartTotal, cart, clearCart, showNotification } = useCart()
     const { address, paymentMethod, savePaymentMethod } = useCheckout()
     const navigate = useNavigate()
     
@@ -37,24 +42,25 @@ export function CheckoutSummary() {
                 return
             }
 
-            // Validación de dirección removida - usar dirección por defecto si no hay seleccionada
-            const direccionAUsar = address.id_direccion || 1; // Usar dirección ID 1 por defecto
+            const direccionAUsar = address.id_direccion || 1
 
             console.log('🛒 Iniciando proceso de compra...')
             console.log('📍 Dirección:', address)
             console.log('💰 Total:', total)
 
+            // ========================================
             // PASO 1: Crear el pedido desde el carrito
+            // ========================================
             console.log('📦 Creando pedido...')
             const pedidoResponse = await PedidoService.crear(
                 cliente.id_cliente,
                 direccionAUsar
             )
-
             console.log('✅ Pedido creado:', pedidoResponse)
 
+            // ========================================
             // PASO 2: Procesar el pago con el banco
-            // Usar los datos del método de pago guardado
+            // ========================================
             if (!paymentMethod) {
                 showNotification("No se encontró método de pago. Por favor añade uno.", "error")
                 setPaymentStatus('error')
@@ -62,63 +68,107 @@ export function CheckoutSummary() {
                 return
             }
 
-            // Formatear el número de tarjeta (remover espacios)
             const numeroTarjeta = paymentMethod.cardNumber?.replace(/\s/g, '') || "5555555555554444"
-
-            // Extraer mes y año de expiración
             const [mesExp, anioExp] = paymentMethod.expiryDate?.split('/') || ['12', '30']
 
-            // ✅ NUEVO: Ya NO se envía numero_tarjeta_destino
             const datosPago = {
                 id_pedido: pedidoResponse.id_pedido,
-                numero_tarjeta_origen: numeroTarjeta, // La tarjeta del cliente
+                numero_tarjeta_origen: numeroTarjeta,
                 nombre_cliente: paymentMethod.cardholderName || cliente.nombre || "Cliente",
                 mes_exp: parseInt(mesExp) || 12,
-                anio_exp: parseInt(`20${anioExp}`) || 2030, // Convertir 30 a 2030
+                anio_exp: parseInt(`20${anioExp}`) || 2030,
                 cvv: paymentMethod.cvv || "111",
-                monto: parseFloat(pedidoResponse.total), // Usar el total del pedido creado
+                monto: parseFloat(pedidoResponse.total),
                 moneda: "MXN",
                 tipo: "venta"
             }
 
             console.log('💳 Procesando pago con banco...')
-            console.log('📤 Datos enviados:', datosPago)
-            
             const pagoResponse = await PagoService.procesar(datosPago)
-            
             console.log('💰 Respuesta del pago:', pagoResponse)
 
-            // PASO 3: Verificar resultado del pago
             const estadoPago = pagoResponse.estado?.toUpperCase()
 
+            // ========================================
+            // PASO 3: Verificar resultado del pago
+            // ========================================
             if (estadoPago === "APROBADO" || estadoPago === "COMPLETADO") {
-                setPaymentStatus('success')
-
+                
                 console.log('✅ Pago exitoso!')
-                console.log('🎉 Pedido #' + pedidoResponse.id_pedido + ' completado')
 
-                showNotification("¡Pago exitoso! Tu pedido ha sido procesado.", "success")
+                // ========================================
+                // PASO 4: Crear el envío (NUEVO)
+                // ========================================
+                try {
+                    console.log('📮 Creando solicitud de envío...')
 
-                // Limpiar carrito (ya se limpió en el backend, pero por si acaso)
+                    // Generar ID único para el envío
+                    const idOrdenExterna = `ECM-${Date.now()}-${pedidoResponse.id_pedido}`
+
+                    // Preparar productos para el sistema de envíos
+                    const productosEnvio = cart.items.map(item => ({
+                        sku: `PROD-${item.producto.id}`,
+                        nombre: item.producto.nombre,
+                        cantidad: item.cantidad,
+                        precio_unitario: parseFloat(item.producto.precio)
+                    }))
+
+                    // Preparar datos del envío
+                    const datosEnvio = {
+                        id_orden_externa: idOrdenExterna,
+                        id_orden_original: `P-${pedidoResponse.id_pedido}`,
+                        servicio_origen: "ecommerce",
+                        webhook_url: `${import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api"}/envios/webhook`,
+                        datos_cliente: {
+                            nombre: cliente.nombre || "Cliente",
+                            telefono: cliente.telefono || "0000000000",
+                            email: cliente.correo || "cliente@email.com",
+                            direccion: address.direccion_completa || 
+                                      `${address.calle || ''} ${address.numero_ext || ''}, ${address.colonia || ''}, ${address.ciudad || ''}`
+                        },
+                        productos: productosEnvio
+                    }
+
+                    console.log('📤 Enviando solicitud de envío:', datosEnvio)
+
+                    const envioResponse = await EnvioService.crear(datosEnvio)
+                    
+                    console.log('✅ Envío creado:', envioResponse)
+                    console.log('📍 Código de seguimiento:', envioResponse.codigo_seguimiento)
+
+                } catch (envioError) {
+                    // El pago ya fue exitoso, pero el envío falló
+                    console.error('⚠️ Error al crear envío (pero pago exitoso):', envioError)
+                    
+                    // Notificar al usuario que el pago fue exitoso pero hay un problema con el envío
+                    showNotification(
+                        "Pago exitoso. Hubo un problema al crear el envío, por favor contacta a soporte.",
+                        "warning"
+                    )
+                }
+
+                // ========================================
+                // PASO 5: Finalizar proceso
+                // ========================================
+                setPaymentStatus('success')
+                showNotification("¡Compra exitosa! Tu pedido ha sido procesado.", "success")
+
+                // Limpiar carrito
                 await clearCart()
 
-                // Esperar 2 segundos y redirigir a pedidos
+                // Redirigir a pedidos
                 setTimeout(() => {
                     navigate('/account?tab=orders')
                 }, 2000)
 
             } else if (estadoPago === "RECHAZADO") {
-                // Pago rechazado
                 setPaymentStatus('error')
-
                 console.error('❌ Pago rechazado:', pagoResponse)
-
                 showNotification(
                     `Pago rechazado: ${pagoResponse.mensaje || 'Verifica los datos de tu tarjeta'}`,
                     "error"
                 )
             } else {
-                // Estado desconocido o pendiente
                 setPaymentStatus('error')
                 showNotification(
                     `Estado del pago: ${estadoPago}. ${pagoResponse.mensaje || ''}`,
@@ -135,17 +185,14 @@ export function CheckoutSummary() {
             
         } finally {
             setLoading(false)
-            // Resetear estado visual después de 3 segundos
             setTimeout(() => setPaymentStatus(null), 3000)
         }
     }
 
     const handleContinue = () => {
         if (paymentMethod) {
-            // Ya tiene método de pago, proceder con la compra
             handlePurchase()
         } else {
-            // Mostrar modal para agregar método de pago
             setShowPaymentModal(true)
         }
     }
@@ -191,7 +238,7 @@ export function CheckoutSummary() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span className="font-medium">Procesando pago...</span>
+                            <span className="font-medium">Procesando pago y envío...</span>
                         </div>
                     </div>
                 )}
@@ -202,7 +249,7 @@ export function CheckoutSummary() {
                             <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                            <span className="font-medium">¡Pago exitoso! Redirigiendo...</span>
+                            <span className="font-medium">¡Compra exitosa! Redirigiendo...</span>
                         </div>
                     </div>
                 )}
@@ -213,7 +260,7 @@ export function CheckoutSummary() {
                             <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
-                            <span className="font-medium">Pago rechazado</span>
+                            <span className="font-medium">Error en la compra</span>
                         </div>
                     </div>
                 )}
