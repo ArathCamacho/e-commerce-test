@@ -65,7 +65,8 @@ class SistemaServices:
                 "talla": p.talla,
                 "color": p.color,
                 "stock": p.stock,
-                "duracion_minutos": p.duracion_minutos
+                "duracion_minutos": p.duracion_minutos,
+                "image": p.imagen_url
             })
         
         return catalogo_productos
@@ -144,7 +145,8 @@ class SistemaServices:
                 "talla": p.talla,
                 "color": p.color,
                 "stock": p.stock,
-                "duracion_minutos": p.duracion_minutos
+                "duracion_minutos": p.duracion_minutos,
+                "image": p.imagen_url
             })
         
         return catalogo_productos
