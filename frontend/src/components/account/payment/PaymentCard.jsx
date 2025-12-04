@@ -23,7 +23,7 @@ export function PaymentCard({ card, onEdit, onDelete, onClick, onRemoveDefault }
             onClick={() => onClick(card.id)}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
-            className={`p-5 relative cursor-pointer transition-all w-full sm:w-72 aspect-square ${card.isDefault
+            className={`p-5 relative cursor-pointer transition-all w-full sm:w-72 aspect-square hover:scale-105 transition-transform duration-300 ${card.isDefault
                 ? 'bg-[rgb(240,244,239)] dark:bg-zinc-800 border border-[rgb(169,191,162)] dark:border-[rgb(169,191,162)]'
                 : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700'
                 }`}

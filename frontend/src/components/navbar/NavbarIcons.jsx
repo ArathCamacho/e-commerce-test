@@ -59,14 +59,14 @@ export function NavbarIcons({
 
             <button
                 onClick={() => navigate('/favoritos')}
-                className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2"
+                className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2 hover:scale-110 transition-transform duration-300"
             >
                 <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             <button
                 onClick={toggleSearch}
-                className="hidden xs:block text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2"
+                className="hidden xs:block text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2 hover:scale-110 transition-transform duration-300"
             >
                 <Search className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -86,7 +86,7 @@ export function NavbarIcons({
             <div className="relative">
                 <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2"
+                    className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1 sm:p-2 hover:scale-110 transition-transform duration-300"
                 >
                     <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>

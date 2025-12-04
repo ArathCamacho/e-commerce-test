@@ -29,7 +29,7 @@ export function RecommendedCategories() {
                 {/* Grid de Categorías */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories.map((category) => (
-                        <div key={category.id} className="relative h-56 md:h-64 rounded-lg overflow-hidden group cursor-pointer">
+                        <div key={category.id} className="relative h-56 md:h-64 rounded-lg overflow-hidden group cursor-pointer hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(.15,.83,.66,1)]">
                             {/* Imagen */}
                             <img
                                 src={category.image}

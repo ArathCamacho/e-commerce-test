@@ -17,7 +17,7 @@ export function ProductCard({ product, showAddButton = true }) {
     return (
         <Link
             to={`/producto/${product.id}`}
-            className="group bg-white dark:bg-zinc-900 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer"
+            className="group bg-white dark:bg-zinc-900 overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-700 ease-[cubic-bezier(.15,.83,.66,1)] cursor-pointer"
         >
             <div className="relative h-72 overflow-hidden bg-gray-100 dark:bg-zinc-800">
                 <img

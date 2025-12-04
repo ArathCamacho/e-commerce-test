@@ -21,10 +21,10 @@ export function HeroSection() {
 
                 {/* Botones */}
                 <div className="flex gap-4 flex-wrap justify-center">
-                    <button className="bg-transparent border border-white text-white hover:bg-white hover:text-black px-6 py-2 rounded font-medium transition-colors">
+                    <button className="bg-transparent border border-white text-white hover:bg-white hover:text-black px-6 py-2 rounded font-medium transition-colors hover:scale-105 transition-transform duration-300">
                         Ver colección
                     </button>
-                    <button className="bg-transparent border border-white text-white hover:bg-white hover:text-black px-6 py-2 rounded font-medium transition-colors">
+                    <button className="bg-transparent border border-white text-white hover:bg-white hover:text-black px-6 py-2 rounded font-medium transition-colors hover:scale-105 transition-transform duration-300">
                         Ver novedades
                     </button>
                 </div>

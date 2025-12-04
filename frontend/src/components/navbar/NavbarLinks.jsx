@@ -17,7 +17,7 @@ export function NavbarLinks() {
                 <button
                     key={link.path}
                     onClick={() => navigate(link.path)}
-                    className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm font-medium transition relative group"
+                    className="text-gray-700 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm font-medium transition relative group hover:scale-105 transition-transform duration-300"
                 >
                     {link.name}
                     <span className="absolute top-full left-0 w-0 h-px bg-[#A9BFA2] transition-all group-hover:w-full mt-1"></span>

@@ -53,7 +53,7 @@ export function FeaturedProducts() {
                 {/* Header con Título y Botón */}
                 <div className="flex items-center justify-between mb-12">
                     <h2 className="text-2xl md:text-2xl font-bold text-gray-700 dark:text-zinc-200">PRODUCTOS DESTACADOS</h2>
-                    <a href="#" className="text-gray-700 dark:text-zinc-400 text-base font-bold transition relative group">
+                    <a href="#" className="text-gray-700 dark:text-zinc-400 text-base font-bold transition relative group hover:scale-105 transition-transform duration-300">
                         VER TODOS
                         <span className="absolute top-full left-0 w-0 h-px bg-[#A9BFA2] transition-all group-hover:w-full mt-1"></span>
                     </a>
@@ -80,7 +80,7 @@ export function FeaturedProducts() {
                             <Link
                                 key={product.id}
                                 to={`/producto/${product.id}`}
-                                className="bg-white dark:bg-zinc-900 rounded-lg overflow-hidden group cursor-pointer transition-colors duration-300 hover:shadow-lg"
+                                className="bg-white dark:bg-zinc-900 rounded-lg overflow-hidden group cursor-pointer transition-colors duration-300 hover:shadow-lg hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(.15,.83,.66,1)]"
                             >
                                 <div className="relative h-64 md:h-72 overflow-hidden bg-gray-200 dark:bg-zinc-800">
                                     <img

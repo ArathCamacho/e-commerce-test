@@ -107,21 +107,21 @@ export function Footer() {
                             <div className="flex items-center gap-3">
                                 <a
                                     href="#"
-                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors"
+                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors hover:scale-110 transition-transform duration-300"
                                     aria-label="Facebook"
                                 >
                                     <Facebook className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
                                 </a>
                                 <a
                                     href="#"
-                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors"
+                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors hover:scale-110 transition-transform duration-300"
                                     aria-label="Instagram"
                                 >
                                     <Instagram className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
                                 </a>
                                 <a
                                     href="#"
-                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors"
+                                    className="group w-9 h-9 bg-zinc-800 dark:bg-zinc-950 rounded-full flex items-center justify-center hover:bg-[#A9BFA2] dark:hover:bg-[#A9BFA2] transition-colors hover:scale-110 transition-transform duration-300"
                                     aria-label="X (Twitter)"
                                 >
                                     <Twitter className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
