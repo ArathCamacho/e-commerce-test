@@ -2,23 +2,18 @@ export function RecommendedCategories() {
     const categories = [
         {
             id: 1,
-            name: "BUZOS",
-            image: "https://www.hydroscand.dk/media/catalog/category//media/catalog/category/OG-Produkter-logo.png",
+            name: "HOMBRES",
+            image: "https://cdn0.uncomo.com/es/posts/3/0/4/estilos_de_moda_actuales_para_hombre_encuentra_el_tuyo_47403_600.webp",
         },
         {
             id: 2,
-            name: "BERMUDAS",
-            image: "https://www.hydroscand.dk/media/catalog/category//media/catalog/category/OG-Produkter-logo.png",
+            name: "MUJERES",
+            image: "https://mialuxury.me/wp-content/uploads/2021/10/Estilo-Clasico.jpg",
         },
         {
             id: 3,
-            name: "JEANS",
-            image: "https://www.hydroscand.dk/media/catalog/category//media/catalog/category/OG-Produkter-logo.png",
-        },
-        {
-            id: 4,
-            name: "SWEATERS",
-            image: "https://www.hydroscand.dk/media/catalog/category//media/catalog/category/OG-Produkter-logo.png",
+            name: "NIÑOS",
+            image: "https://sumaqmercados.pe/wp-content/uploads/2023/06/sumaq-mercados-blog-tipos-de-ropas-para-ninos.jpg.webp",
         },
     ]
 
@@ -32,7 +27,7 @@ export function RecommendedCategories() {
                 </div>
 
                 {/* Grid de Categorías */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories.map((category) => (
                         <div key={category.id} className="relative h-56 md:h-64 rounded-lg overflow-hidden group cursor-pointer">
                             {/* Imagen */}
@@ -42,12 +37,14 @@ export function RecommendedCategories() {
                                 className="w-full h-full object-cover transition duration-300"
                             />
 
-                            {/* Overlay */}
-                            <div className="absolute inset-0 bg-transparent group-hover:bg-white/20 transition duration-300"></div>
+                            {/* Overlay permanente oscuro */}
+                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition duration-300"></div>
 
-                            {/* Texto */}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <h3 className="text-white font-extralight text-2xl md:text-3xl text-center">{category.name}</h3>
+                            {/* Texto siempre visible */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <h3 className="text-white font-bold text-2xl md:text-3xl text-center drop-shadow-lg group-hover:scale-110 transition-transform duration-300">
+                                    {category.name}
+                                </h3>
                             </div>
                         </div>
                     ))}
