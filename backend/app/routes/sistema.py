@@ -142,6 +142,7 @@ async def registrar_venta_externa(
     datos: VentaExternaRegistroSchemaV2, 
     db: Session = Depends(get_db)
 ):
+    await VentaExternaServices.registrar_venta_v2(db, datos)
     """
     📦 Registrar venta externa desde sistema externo
     
@@ -172,6 +173,7 @@ async def registrar_venta_externa(
     
     Retorna: 204 No Content si fue exitoso
     """
+        
     VentaExternaServices.registrar_venta_v2(db, datos)
 
 
