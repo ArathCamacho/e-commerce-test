@@ -118,9 +118,9 @@ async def crear_envio(datos: EnvioSolicitudSchema, db: Session = Depends(get_db)
     return await EnvioServices.crear_envio(db, datos)
 
 
-@router.get("/envios/{id_envio}", response_model=EnvioResponseSchema)
-async def consultar_envio(id_envio: int, db: Session = Depends(get_db)):
-    return EnvioServices.consultar_envio(db, id_envio)
+@router.get("/envios/{id_orden_externa}", response_model=EnvioResponseSchema)
+async def consultar_envio(id_orden_externa: str, db: Session = Depends(get_db)):
+    return EnvioServices.consultar_envio(db, id_orden_externa)
 
 
 @router.get("/envios/pedido/{id_pedido}", response_model=EnvioResponseSchema)

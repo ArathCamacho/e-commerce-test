@@ -202,15 +202,31 @@ class EnvioServices:
             raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
     
     
+
     @staticmethod
-    def consultar_envio(db: Session, id_envio: int) -> EnvioResponseSchema:
-        """Consultar estado de un envío por ID"""
-        envio = db.query(Envio).filter(Envio.id_envio == id_envio).first()
+    def consultar_envio(db: Session, id_orden_externa: str) -> EnvioResponseSchema:
+        """
+        Consultar estado de un envío por id_orden_externa
+        
+        Args:
+            db: Sesión de base de datos
+            id_orden_externa: ID de la orden externa (string)
+        
+        Returns:
+            EnvioResponseSchema con datos limitados del envío
+        """
+        envio = db.query(Envio).filter(
+            Envio.id_orden_externa == id_orden_externa
+        ).first()
+        
         if not envio:
-            raise HTTPException(status_code=404, detail="Envío no encontrado")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Envío no encontrado con id_orden_externa: {id_orden_externa}"
+            )
         
         if envio.estado_actual == "ERROR":
-            logger.warning(f"Envío {id_envio} en ERROR. Ver response_json para detalles.")
+            logger.warning(f"Envío {id_orden_externa} en ERROR. Ver response_json para detalles.")
         
         return EnvioResponseSchema.model_validate(envio)
     
