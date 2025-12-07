@@ -10,6 +10,12 @@ from app.models.Direccion import Direccion, DireccionCreateSchema, DireccionResp
 from app.models.Carrito import Carrito, CarritoItem, CarritoAgregarSchema, CarritoResponseSchema, CarritoItemResponseSchema
 from app.models.Pedido import Pedido, PedidoItem, PedidoCreateSchema, PedidoResponseSchema, PedidoItemResponseSchema
 from app.models.Producto import Producto
+from app.models.Pedido import (
+    Pedido,
+    DireccionEnPedidoSchema,
+    PedidoDetalleResponseSchema,
+    ClienteEnPedidoSchema
+)
 
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -515,3 +521,59 @@ class PedidoServices:
         logger.info(f"Pedido {id_pedido} actualizado a: {nuevo_estado}")
 
         return {"id_pedido": id_pedido, "nuevo_estado": nuevo_estado}
+    
+    @staticmethod
+    def obtener_detalle_pedido(db: Session, id_pedido: int) -> PedidoDetalleResponseSchema:
+        """
+        Obtener detalle completo de un pedido incluyendo datos de cliente y dirección
+        """
+        from app.models.Cliente import Cliente
+        from app.models.Direccion import Direccion
+        
+        # Buscar el pedido
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        
+        if not pedido:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pedido {id_pedido} no encontrado"
+            )
+        
+        # Buscar datos del cliente
+        cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
+        
+        if not cliente:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Cliente {pedido.id_cliente} no encontrado"
+            )
+        
+        # Buscar datos de la dirección
+        direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
+        
+        if not direccion:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dirección {pedido.id_direccion} no encontrada"
+            )
+        
+        # Construir respuesta
+        return PedidoDetalleResponseSchema(
+            id_pedido=pedido.id_pedido,
+            total=float(pedido.total),
+            estado=pedido.estado,
+            fecha_creacion=pedido.fecha_creacion,
+            cliente=ClienteEnPedidoSchema(
+                nombre=cliente.nombre,
+                apellido=cliente.apellido,
+                correo=cliente.correo,
+                telefono=cliente.telefono
+            ),
+            direccion=DireccionEnPedidoSchema(
+                calle=direccion.calle,
+                ciudad=direccion.ciudad,
+                estado=direccion.estado,
+                codigo_postal=direccion.codigo_postal,
+                referencias=direccion.referencias
+            )
+        )
