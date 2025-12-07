@@ -24,9 +24,9 @@ class VentaExterna(Base):
     productos_json = Column(Text, nullable=False)  # ← TODOS los productos en JSON
     request_json = Column(Text, nullable=True)  # ← Request completo para auditoría
     
-    # IDs generados
-    id_pedido_generado = Column(Integer, nullable=True)  # ← Sin FK por ahora
-    id_envio_generado = Column(Integer, nullable=True)  # ← Sin FK por ahora
+    # IDs generados (comentados porque no existen en la BD aún)
+    # id_pedido_generado = Column(Integer, nullable=True)
+    # id_envio_generado = Column(Integer, nullable=True)
     
     # Metadata
     fecha_registro = Column(DateTime, default=datetime.utcnow)

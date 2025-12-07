@@ -56,8 +56,10 @@ class VentaExternaServices:
         Proceso:
         1. Verificar que la orden no exista
         2. Validar todos los productos y stock
-        3. Crear pedido y descontar stock
+        3. Descontar stock del inventario
         4. Guardar en venta_externa (1 fila con productos en JSON)
+        
+        NO SE CREA PEDIDO - Solo registro y descuento de inventario
         
         No retorna nada - solo registra en BD (204 No Content)
         """
@@ -126,65 +128,36 @@ class VentaExternaServices:
                 detail={"errores": errores, "orden": datos.order_id}
             )
         
-        # 4. PROCESAR LA VENTA (TRANSACCIÓN COMPLETA)
+        # 4. PROCESAR LA VENTA (SOLO DESCUENTO DE INVENTARIO)
         try:
-            # Obtener cliente externo
-            cliente_externo = VentaExternaServices._obtener_o_crear_cliente_externo(db)
+            fecha_venta = datetime.fromisoformat(datos.created_at.replace('Z', '')) if datos.created_at else datetime.utcnow()
             
-            # Crear el pedido
-            fecha_pedido = datetime.fromisoformat(datos.created_at.replace('Z', '')) if datos.created_at else datetime.utcnow()
-            
-            pedido = Pedido(
-                id_cliente=cliente_externo.id_cliente,
-                id_direccion=1,  # Dirección por defecto para ventas externas
-                total=Decimal(str(datos.price)),
-                estado="PAGADO" if datos.payment_status.upper() == "PAID" else "PENDIENTE",
-                fecha_creacion=fecha_pedido
-            )
-            db.add(pedido)
-            db.flush()  # Obtener el id_pedido
-            
-            total_items = sum(item['data'].quantity for item in productos_validados)
-            
-            # Procesar cada producto
+            # Descontar stock de cada producto
             for item_validado in productos_validados:
                 producto = item_validado['producto']
                 prod_data = item_validado['data']
                 
-                # Calcular precio proporcional basado en cantidad
-                precio_item = (Decimal(str(datos.price)) / total_items) * prod_data.quantity
-                precio_unitario = precio_item / prod_data.quantity
-                
-                # Crear item del pedido
-                pedido_item = PedidoItem(
-                    id_pedido=pedido.id_pedido,
-                    id_producto=producto.id_producto,
-                    cantidad=prod_data.quantity,
-                    precio_unitario=precio_unitario
-                )
-                db.add(pedido_item)
-                
                 # Descontar stock
                 producto.stock -= prod_data.quantity
+                logger.info(f"Stock descontado: {producto.nombre} - Cantidad: {prod_data.quantity}")
             
             # Guardar venta externa (UNA SOLA FILA)
             venta = VentaExterna(
                 order_id=datos.order_id,
                 total=Decimal(str(datos.price)),
-                created_at=fecha_pedido,
+                created_at=fecha_venta,
                 payment_status=datos.payment_status,
                 datos_cliente_json=json.dumps(datos.datos_cliente.model_dump()),
                 productos_json=json.dumps([p.model_dump() for p in datos.products]),
                 request_json=json.dumps(datos.model_dump()),
-                procesado="PROCESADO",
-                id_pedido_generado=pedido.id_pedido
+                procesado="PROCESADO"
             )
             db.add(venta)
             
             # Commit de toda la transacción
             db.commit()
             
-            logger.info(f"✅ Venta externa procesada: {datos.order_id} -> Pedido: {pedido.id_pedido}")
+            logger.info(f"✅ Venta externa procesada: {datos.order_id} - Total: ${datos.price}")
             
         except HTTPException:
             raise
@@ -272,8 +245,8 @@ class VentaExternaServices:
             procesado=venta.procesado,
             datos_cliente=DatosClienteVentaExterna(**datos_cliente),
             productos=[ProductoVentaExterna(**p) for p in productos],
-            id_pedido_generado=venta.id_pedido_generado,
-            id_envio_generado=venta.id_envio_generado,
+            # id_pedido_generado=venta.id_pedido_generado,  # Comentado
+            # id_envio_generado=venta.id_envio_generado,  # Comentado
             created_at=venta.created_at,
             fecha_registro=venta.fecha_registro
         )
