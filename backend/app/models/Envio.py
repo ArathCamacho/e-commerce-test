@@ -39,7 +39,7 @@ class Envio(Base):
     response_json = Column(Text, nullable=True)
     
     # Relación
-    pedido = relationship("Pedido", back_populates="envios")
+    # pedido = relationship("Pedido", back_populates="envios")  # Temporalmente comentado
 
 
 # ============================================

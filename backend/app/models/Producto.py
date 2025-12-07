@@ -22,10 +22,10 @@ class Producto(Base):
     color = Column(String(50))
     duracion_minutos = Column(Integer)
     
-    # Relaciones
-    categoria = relationship("Categoria", back_populates="productos")
-    items_carrito = relationship("CarritoItem", back_populates="producto")  # ✅ CORREGIDO
-    items_pedido = relationship("PedidoItem", back_populates="producto")    # ✅ CORREGIDO
+    # Relaciones - Comentadas para evitar problemas de configuración SQLAlchemy
+    # categoria = relationship("Categoria", back_populates="productos")
+    # items_carrito = relationship("CarritoItem", back_populates="producto")
+    # items_pedido = relationship("PedidoItem", back_populates="producto")
 
 
 # Schemas de Pydantic

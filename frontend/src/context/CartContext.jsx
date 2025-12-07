@@ -7,6 +7,7 @@ export function CartProvider({ children }) {
     const [cartItems, setCartItems] = useState([])
     const [notification, setNotification] = useState({ show: false, message: '', type: 'success' })
     const [loading, setLoading] = useState(false)
+    const [operationInProgress, setOperationInProgress] = useState(false)
 
     // Cargar carrito al montar el componente
     useEffect(() => {
@@ -35,6 +36,17 @@ export function CartProvider({ children }) {
     }
 
     const addToCart = async (product) => {
+        // Prevenir operaciones concurrentes
+        if (operationInProgress) {
+            console.log('Operación en progreso, ignorando...')
+            return
+        }
+
+        setOperationInProgress(true)
+
+        // Guardar estado anterior para posible reversión
+        const previousItems = [...cartItems]
+
         try {
             setLoading(true)
 
@@ -65,15 +77,16 @@ export function CartProvider({ children }) {
             const cliente = obtenerClienteLocal()
             if (!cliente?.id_cliente) {
                 showNotificationMsg("Debes iniciar sesión para agregar productos al carrito", "error")
+                setCartItems(previousItems) // Revertir
                 return
             }
 
             // Llamada al backend
             await CarritoService.agregar(
-                cliente.id_cliente, 
-                product.id, 
-                1, 
-                product.color, 
+                cliente.id_cliente,
+                product.id,
+                1,
+                product.color,
                 product.size
             )
 
@@ -84,13 +97,25 @@ export function CartProvider({ children }) {
             console.error('Error adding to cart:', error)
             showNotificationMsg("Error al agregar producto al carrito", "error")
             // Revertir cambio optimista en caso de error
-            await loadCart()
+            setCartItems(previousItems)
         } finally {
             setLoading(false)
+            setOperationInProgress(false)
         }
     }
 
     const removeFromCart = async (productId, color, size) => {
+        // Prevenir operaciones concurrentes
+        if (operationInProgress) {
+            console.log('Operación en progreso, ignorando eliminación...')
+            return
+        }
+
+        setOperationInProgress(true)
+
+        // Guardar estado anterior para posible reversión
+        const previousItems = [...cartItems]
+
         try {
             // Encontrar el item para obtener su ID en el backend
             const item = cartItems.find(
@@ -107,14 +132,23 @@ export function CartProvider({ children }) {
             )
 
             const cliente = obtenerClienteLocal()
-            if (!cliente?.id_cliente) return
+            if (!cliente?.id_cliente) {
+                setCartItems(previousItems) // Revertir
+                return
+            }
 
             // Llamada al backend
             await CarritoService.eliminarItem(item.id_item, cliente.id_cliente)
+
+            // Sincronizar con backend
+            await loadCart()
         } catch (error) {
             console.error('Error removing from cart:', error)
             showNotificationMsg("Error al eliminar producto", "error")
-            await loadCart()
+            // Revertir cambio optimista en caso de error
+            setCartItems(previousItems)
+        } finally {
+            setOperationInProgress(false)
         }
     }
 
@@ -124,53 +158,107 @@ export function CartProvider({ children }) {
             return
         }
 
+        // Prevenir operaciones concurrentes
+        if (operationInProgress) {
+            console.log('Operación en progreso, esperando...')
+            return
+        }
+
+        setOperationInProgress(true)
+
         try {
-            // Actualización optimista
-            setCartItems(prevItems =>
-                prevItems.map(item =>
-                    item.id_producto === productId && item.color === color && item.talla === size
-                        ? { ...item, cantidad: quantity }
-                        : item
-                )
-            )
-
             const cliente = obtenerClienteLocal()
-            if (!cliente?.id_cliente) return
+            if (!cliente?.id_cliente) {
+                return
+            }
 
-            // Encontrar el item
-            const item = cartItems.find(
+            // Encontrar el item actual para calcular la diferencia
+            const currentItem = cartItems.find(
                 i => i.id_producto === productId && i.color === color && i.talla === size
             )
 
-            if (!item) return
+            const currentQuantity = currentItem ? (currentItem.cantidad || 0) : 0
+            const difference = quantity - currentQuantity
 
-            // Eliminar y agregar con nueva cantidad (workaround)
-            await CarritoService.eliminarItem(item.id_item, cliente.id_cliente)
-            await CarritoService.agregar(
-                cliente.id_cliente,
-                productId,
-                quantity,
-                color,
-                item.talla
-            )
+            if (difference === 0) {
+                // No hay cambio
+                setOperationInProgress(false)
+                return
+            }
+
+            if (difference > 0) {
+                // Agregar la diferencia
+                await CarritoService.agregar(
+                    cliente.id_cliente,
+                    productId,
+                    difference,
+                    color,
+                    size
+                )
+            } else {
+                // Para reducir, necesitamos eliminar y agregar
+                if (currentItem && currentItem.id_item) {
+                    try {
+                        await CarritoService.eliminarItem(currentItem.id_item, cliente.id_cliente)
+                        if (quantity > 0) {
+                            await CarritoService.agregar(
+                                cliente.id_cliente,
+                                productId,
+                                quantity,
+                                color,
+                                currentItem.talla
+                            )
+                        }
+                    } catch (deleteError) {
+                        console.log('Error al eliminar, recargando carrito')
+                        await loadCart()
+                        return
+                    }
+                }
+            }
+
+            // Recargar carrito del backend
             await loadCart()
         } catch (error) {
             console.error('Error updating quantity:', error)
             showNotificationMsg("Error al actualizar cantidad", "error")
+            // Recargar para sincronizar
             await loadCart()
+        } finally {
+            setOperationInProgress(false)
         }
     }
 
     const clearCart = async () => {
+        // Prevenir operaciones concurrentes
+        if (operationInProgress) {
+            console.log('Operación en progreso, ignorando vaciado...')
+            return
+        }
+
+        setOperationInProgress(true)
+
+        // Guardar estado anterior para posible reversión
+        const previousItems = [...cartItems]
+
         try {
             const cliente = obtenerClienteLocal()
-            if (!cliente?.id_cliente) return
-            
+            if (!cliente?.id_cliente) {
+                setOperationInProgress(false)
+                return
+            }
+
             setCartItems([])
             await CarritoService.vaciar(cliente.id_cliente)
+
+            // Sincronizar con backend
+            await loadCart()
         } catch (error) {
             console.error('Error clearing cart:', error)
-            await loadCart()
+            // Revertir cambio optimista en caso de error
+            setCartItems(previousItems)
+        } finally {
+            setOperationInProgress(false)
         }
     }
 

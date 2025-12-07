@@ -10,8 +10,8 @@ class Categoria(Base):
     nombre = Column(String(100), nullable=False)
     descripcion = Column(String(300))
     
-    # Relación con Producto
-    productos = relationship("Producto", back_populates="categoria")
+    # Relación con Producto - Comentada para evitar problemas de configuración
+    # productos = relationship("Producto", back_populates="categoria")
 
 # Schemas de Pydantic
 class CategoriaResponseSchema(BaseModel):

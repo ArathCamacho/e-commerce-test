@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { obtenerClienteLocal, ClienteService } from '../../services/apiservice'
+import { obtenerClienteLocal, ClienteService, guardarClienteLocal } from '../../services/apiservice'
+import { EditInfoModal } from '../checkout/EditInfoModal'
 
 export function GeneralProfile() {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [showEditModal, setShowEditModal] = useState(false)
 
     useEffect(() => {
         loadUser()
@@ -26,6 +28,35 @@ export function GeneralProfile() {
             console.error('Error loading user:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleEditInfo = async (formData) => {
+        try {
+            // Separar nombre completo en nombre y apellido
+            const nameParts = formData.name.trim().split(' ')
+            const nombre = nameParts[0] || ''
+            const apellido = nameParts.slice(1).join(' ') || ''
+
+            const updateData = {
+                nombre: nombre,
+                apellido: apellido,
+                correo: formData.email,
+                telefono: formData.telefono
+            }
+
+            await ClienteService.actualizar(user.id_cliente, updateData)
+
+            // Reload user data
+            await loadUser()
+
+            // Update local storage
+            const updatedUser = { ...user, ...updateData }
+            localStorage.setItem('cliente', JSON.stringify(updatedUser))
+
+        } catch (error) {
+            console.error('Error updating user info:', error)
+            alert('Error al actualizar la información. Por favor intenta de nuevo.')
         }
     }
 
@@ -81,11 +112,26 @@ export function GeneralProfile() {
                 </div>
 
                 <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
-                    <button className="text-sm text-[rgb(169,191,162)] hover:underline font-medium">
+                    <button
+                        onClick={() => setShowEditModal(true)}
+                        className="text-sm text-[rgb(169,191,162)] hover:underline font-medium"
+                    >
                         Editar información
                     </button>
                 </div>
             </div>
+
+            {/* Edit Info Modal */}
+            <EditInfoModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onSave={handleEditInfo}
+                initialData={{
+                    name: user ? `${user.nombre} ${user.apellido}` : '',
+                    email: user?.correo || '',
+                    telefono: user?.telefono || ''
+                }}
+            />
         </div>
     )
 }

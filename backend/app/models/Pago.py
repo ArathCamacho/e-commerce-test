@@ -20,7 +20,7 @@ class Pago(Base):
     fecha = Column(DateTime, default=datetime.utcnow)
     
     # Relaciones
-    pedido = relationship("Pedido", back_populates="pagos")
+    # pedido = relationship("Pedido", back_populates="pagos")  # Temporalmente comentado
     solicitud = relationship("PagoSolicitud", back_populates="pago", uselist=False)
     respuesta = relationship("PagoRespuesta", back_populates="pago", uselist=False)
 

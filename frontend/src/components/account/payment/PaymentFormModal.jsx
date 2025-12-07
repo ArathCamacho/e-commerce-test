@@ -29,12 +29,12 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add', 
                     cvv: card.cvv || ''
                 })
             } else {
-                // Auto-fill with default test data for new cards
+                // Start with empty form for new cards
                 setFormData({
-                    cardholderName: 'Arath Camacho VPV',
-                    cardNumber: '4111 1111 1115',
-                    expiryDate: '12/30',
-                    cvv: '567'
+                    cardholderName: '',
+                    cardNumber: '',
+                    expiryDate: '',
+                    cvv: ''
                 })
             }
             setErrors({})
@@ -79,10 +79,11 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add', 
             return
         }
 
-        // Include payment preference in the returned data if in checkout mode
-        const dataToSave = isCheckout
-            ? { ...formData, isDefault: paymentPreference === 'default', isOneTime: paymentPreference === 'oneTime' }
-            : formData
+        // Include payment preference in the returned data
+        const dataToSave = {
+            ...formData,
+            isDefault: paymentPreference === 'default'
+        }
 
         onSave(dataToSave)
         onClose()
@@ -131,11 +132,11 @@ export function PaymentFormModal({ isOpen, onClose, onSave, card, mode = 'add', 
                     />
                 </div>
 
-                {/* Checkout Mode: Payment Preference */}
-                {isCheckout && (
+                {/* Payment Preference - Always show for adding cards */}
+                {mode === 'add' && (
                     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
                         <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">
-                            ¿Desea que este sea su método de pago predeterminado?
+                            ¿Desea que esta sea su tarjeta predeterminada?
                         </p>
                         <div className="space-y-3">
                             <label className="flex items-center gap-3 cursor-pointer group">

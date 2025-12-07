@@ -168,7 +168,10 @@ export function Account() {
                             </div>
 
                             {/* Orders List */}
-                            <OrdersList />
+                            <OrdersList
+                                filterStatus={filterStatus}
+                                timeFilter={timeFilter}
+                            />
                         </>
                     )}
 

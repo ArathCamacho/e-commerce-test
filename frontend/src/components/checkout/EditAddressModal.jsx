@@ -6,6 +6,7 @@ export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
         street: initialData?.street || '',
         city: initialData?.city || '',
         zipCode: initialData?.zipCode || '',
+        state: initialData?.state || '',
         country: initialData?.country || ''
     })
     const [errors, setErrors] = useState({})
@@ -16,6 +17,7 @@ export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
                 street: initialData?.street || '',
                 city: initialData?.city || '',
                 zipCode: initialData?.zipCode || '',
+                state: initialData?.state || '',
                 country: initialData?.country || ''
             })
             setErrors({})
@@ -31,6 +33,10 @@ export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
 
         if (!formData.city.trim()) {
             newErrors.city = 'La ciudad es requerida'
+        }
+
+        if (!formData.state.trim()) {
+            newErrors.state = 'El estado es requerido'
         }
 
         if (!formData.zipCode.trim()) {
@@ -80,7 +86,7 @@ export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
                     {errors.street && <p className="mt-1 text-sm text-red-500">{errors.street}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                     <div>
                         <label className="block text-sm font-medium text-gray-900 dark:text-zinc-100 mb-2 uppercase">
                             Código Postal
@@ -107,9 +113,24 @@ export function EditAddressModal({ isOpen, onClose, onSave, initialData }) {
                             onChange={(e) => handleChange('city', e.target.value)}
                             className={`w-full px-4 py-3 bg-white dark:bg-zinc-900 border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-zinc-700'
                                 } text-gray-900 dark:text-zinc-100 focus:outline-none focus:border-black dark:focus:border-white transition-colors`}
-                            placeholder="Ciudad de México"
+                            placeholder="Hermosillo"
                         />
                         {errors.city && <p className="mt-1 text-sm text-red-500">{errors.city}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-900 dark:text-zinc-100 mb-2 uppercase">
+                            Estado
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.state}
+                            onChange={(e) => handleChange('state', e.target.value)}
+                            className={`w-full px-4 py-3 bg-white dark:bg-zinc-900 border ${errors.state ? 'border-red-500' : 'border-gray-300 dark:border-zinc-700'
+                                } text-gray-900 dark:text-zinc-100 focus:outline-none focus:border-black dark:focus:border-white transition-colors`}
+                            placeholder="Sonora"
+                        />
+                        {errors.state && <p className="mt-1 text-sm text-red-500">{errors.state}</p>}
                     </div>
                 </div>
 

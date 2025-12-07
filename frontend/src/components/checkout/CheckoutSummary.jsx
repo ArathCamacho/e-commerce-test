@@ -2,31 +2,22 @@ import { useState } from 'react'
 import { useCart } from '../../context/CartContext'
 import { useCheckout } from '../../context/CheckoutContext'
 import { useNavigate } from 'react-router-dom'
-import { PaymentFormModal } from '../account/payment/PaymentFormModal'
-import { 
-    PagoService, 
-    PedidoService, 
-    obtenerClienteLocal 
+import {
+    PagoService,
+    PedidoService,
+    obtenerClienteLocal
 } from '../../services/apiservice'
 
 export function CheckoutSummary() {
     const { cartTotal, cart, clearCart, showNotification } = useCart()
-    const { address, paymentMethod, savePaymentMethod } = useCheckout()
+    const { address, paymentMethod, savePaymentMethod, openAddressModal, openPaymentModal } = useCheckout()
     const navigate = useNavigate()
     
     const shippingCost = 140.00
-    const total = cartTotal + shippingCost
+    const total = cartTotal // Envío gratis
 
-    const [showPaymentModal, setShowPaymentModal] = useState(false)
     const [loading, setLoading] = useState(false)
     const [paymentStatus, setPaymentStatus] = useState(null) // 'processing', 'success', 'error'
-
-    const handleSavePayment = (paymentData) => {
-        console.log('Payment data saved:', paymentData)
-        savePaymentMethod(paymentData)
-        setShowPaymentModal(false)
-        showNotification("Método de pago agregado correctamente", "success")
-    }
 
     const handlePurchase = async () => {
         try {
@@ -142,11 +133,28 @@ export function CheckoutSummary() {
     }
 
     const handleContinue = () => {
-        if (paymentMethod) {
-            handlePurchase()
-        } else {
-            setShowPaymentModal(true)
+        console.log('Validando dirección:', address)
+        console.log('Validando método de pago:', paymentMethod)
+
+        // Validar dirección - permitir direcciones temporales (sin id_direccion)
+        if (!address || !address.street || !address.city || !address.zipCode) {
+            console.log('Dirección inválida, abriendo modal')
+            openAddressModal()
+            showNotification("Por favor completa tu dirección de envío", "error")
+            return
         }
+
+        // Validar método de pago
+        if (!paymentMethod) {
+            console.log('Método de pago faltante, abriendo modal')
+            openPaymentModal()
+            showNotification("Por favor selecciona un método de pago", "error")
+            return
+        }
+
+        console.log('Validaciones pasaron, procediendo con el pago')
+        // Si todo está validado, proceder con el pago
+        handlePurchase()
     }
 
     return (
@@ -170,10 +178,11 @@ export function CheckoutSummary() {
                         <span>Valor del pedido</span>
                         <span>${cartTotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700 dark:text-zinc-300">
-                        <span>Costo estimado de envío</span>
-                        <span>${shippingCost.toFixed(2)}</span>
-                    </div>
+                {/* Envío gratis */}
+                {/* <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+                    <span>Costo estimado de envío</span>
+                    <span>${shippingCost.toFixed(2)}</span>
+                </div> */}
                 </div>
 
                 {/* Total */}
@@ -229,11 +238,9 @@ export function CheckoutSummary() {
                             : 'bg-gray-900 dark:bg-zinc-700 text-white hover:bg-black dark:hover:bg-zinc-600'
                     }`}
                 >
-                    {loading 
-                        ? 'PROCESANDO...' 
-                        : paymentMethod 
-                        ? 'CONTINUAR CON LA COMPRA' 
-                        : 'AÑADIR MÉTODO DE PAGO'
+                    {loading
+                        ? 'PROCESANDO...'
+                        : 'CONTINUAR CON EL PAGO'
                     }
                 </button>
 
@@ -242,24 +249,9 @@ export function CheckoutSummary() {
                     Pago seguro procesado por el banco
                 </div>
 
-                {/* Payment Methods */}
-                <div className="flex items-center justify-center">
-                    <img
-                        src="https://placehold.co/300x40/FFFFFF/666666?text=Payment+Methods"
-                        alt="Métodos de pago"
-                        className="w-full max-w-xs"
-                    />
-                </div>
+                {/* Payment Methods - Removido por seguridad */}
             </div>
 
-            {/* Payment Form Modal */}
-            <PaymentFormModal
-                isOpen={showPaymentModal}
-                onClose={() => setShowPaymentModal(false)}
-                onSave={handleSavePayment}
-                mode="add"
-                isCheckout={true}
-            />
         </>
     )
 }

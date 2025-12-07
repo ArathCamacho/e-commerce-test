@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from database import get_db
 from app.services.sistemaservices import SistemaServices
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import random
 from datetime import datetime
 
-from app.models.Cliente import ClienteRegistroSchema, ClienteLoginSchema, ClienteResponseSchema
+from app.models.Cliente import ClienteRegistroSchema, ClienteLoginSchema, ClienteResponseSchema, ClienteUpdateSchema
 from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
 from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema, SolicitudCatalogoSchema
 from app.models.Categoria import CategoriaResponseSchema, Categoria
@@ -19,13 +19,19 @@ from app.services.envioservices import EnvioServices
 from app.models.Envio import EnvioSolicitudSchema, EnvioResponseSchema, EnvioRespuestaSchema
 
 from app.services.ventaexternaservices import VentaExternaServices
-from app.models.VentaExterna import VentaExternaRegistroSchema, VentaExternaResponseSchema
+from app.models.VentaExterna import (
+    VentaExternaRegistroSchemaV2,
+    VentaExternaResponseSchema,
+    VentaExternaDetalleSchema
+)
 from app.services.clienteservices import (
-    ClienteServices, 
-    DireccionServices, 
-    CarritoServices, 
+    ClienteServices,
+    DireccionServices,
+    CarritoServices,
     PedidoServices
 )
+from app.services.metodopagoservices import MetodoPagoServices
+from app.models.MetodoPago import MetodoPagoCreateSchema, MetodoPagoResponseSchema, MetodoPagoUpdateSchema
 
 router = APIRouter()
 
@@ -71,7 +77,6 @@ async def obtener_catalogo_post(
 
 @router.get("/catalogo/all")
 async def obtener_catalogo_completo_sin_filtros(db: Session = Depends(get_db)):
-
     return SistemaServices.obtener_catalogo_completo_sin_filtros(db)
 
 
@@ -96,6 +101,7 @@ async def consultar_pagos_por_pedido(id_pedido: int, db: Session = Depends(get_d
     """Consultar todos los pagos de un pedido"""
     return PagoServices.consultar_pagos_por_pedido(db, id_pedido)
 
+
 @router.post("/envios/mock", response_model=EnvioRespuestaSchema)
 async def mock_sistema_envios(datos: EnvioSolicitudSchema):
     return EnvioRespuestaSchema(
@@ -114,36 +120,114 @@ async def crear_envio(datos: EnvioSolicitudSchema, db: Session = Depends(get_db)
 
 @router.get("/envios/{id_envio}", response_model=EnvioResponseSchema)
 async def consultar_envio(id_envio: int, db: Session = Depends(get_db)):
-
     return EnvioServices.consultar_envio(db, id_envio)
 
 
 @router.get("/envios/pedido/{id_pedido}", response_model=EnvioResponseSchema)
 async def consultar_envio_por_pedido(id_pedido: int, db: Session = Depends(get_db)):
-
     return EnvioServices.consultar_envio_por_pedido(db, id_pedido)
 
 
 @router.post("/envios/webhook")
 async def recibir_actualizacion_envio(datos: dict, db: Session = Depends(get_db)):
-
     return EnvioServices.actualizar_estado_webhook(db, datos)
 
-@router.post("/ventas/registrar", response_model=VentaExternaResponseSchema)
+
+# ==================== VENTAS EXTERNAS ====================
+
+# Solo el endpoint que cambia - el resto del archivo routes.py permanece igual
+
+@router.post("/ventas/registrar", status_code=status.HTTP_204_NO_CONTENT)
 async def registrar_venta_externa(
-    datos: VentaExternaRegistroSchema, 
+    datos: VentaExternaRegistroSchemaV2, 
     db: Session = Depends(get_db)
 ):
-    return VentaExternaServices.registrar_venta(db, datos)
+    """
+    📦 Registrar venta externa desde sistema externo
+    
+    Body esperado:
+    {
+      "order_id": "ORD-123",
+      "store_id": 1,
+      "price": 599.97,
+      "products": [
+        {"external_id": 1, "quantity": 2, "size": "M", "color": "Negro"},
+        {"external_id": 5, "quantity": 1, "size": "L"}
+      ],
+      "datos_cliente": {
+        "nombre": "Juan Pérez",
+        "telefono": "6621234567",
+        "email": "juan@example.com",
+        "direccion": "Calle Ejemplo 123, Col. Centro"
+      },
+      "payment_status": "PAID",
+      "created_at": "2025-12-07T10:00:00"  (opcional)
+    }
+    
+    ✅ Proceso:
+    - Valida productos y stock
+    - Crea pedido automático
+    - Descuenta inventario
+    - Guarda en venta_externa (1 fila = 1 orden)
+    
+    Retorna: 204 No Content si fue exitoso
+    """
+    VentaExternaServices.registrar_venta_v2(db, datos)
 
 
 @router.get("/ventas/externas", response_model=List[VentaExternaResponseSchema])
 async def consultar_ventas_externas(
     order_id: Optional[str] = None,
+    procesado: Optional[str] = Query(None, description="PROCESADO, ERROR, PENDIENTE"),
+    limit: int = Query(50, le=100, description="Máximo de resultados"),
     db: Session = Depends(get_db)
 ):
-    return VentaExternaServices.consultar_ventas_externas(db, order_id)
+    """
+    📋 Consultar lista de ventas externas
+    
+    Filtros opcionales:
+    - order_id: Buscar orden específica
+    - procesado: Estado (PROCESADO, ERROR, PENDIENTE)
+    - limit: Máximo de resultados (default 50, max 100)
+    """
+    return VentaExternaServices.consultar_ventas_externas(
+        db, order_id, procesado, limit
+    )
 
+
+@router.get("/ventas/orden/{order_id}", response_model=VentaExternaDetalleSchema)
+async def consultar_orden_detalle(
+    order_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    🔍 Ver detalle completo de una orden específica
+    
+    Retorna:
+    - Datos completos de la orden
+    - Lista de productos expandida
+    - Datos del cliente
+    - IDs de pedido y envío generados
+    - Estados y timestamps
+    """
+    return VentaExternaServices.consultar_orden_completa(db, order_id)
+
+
+@router.get("/ventas/stats")
+async def obtener_stats_ventas_externas(db: Session = Depends(get_db)):
+    """
+    📊 Estadísticas generales de ventas externas
+    
+    Retorna:
+    - Total de órdenes
+    - Órdenes procesadas/error/pendientes
+    - Tasa de éxito
+    - Total vendido
+    """
+    return VentaExternaServices.obtener_stats(db)
+
+
+# ==================== CLIENTES ====================
 
 @router.post("/clientes/registro", response_model=ClienteResponseSchema)
 async def registrar_cliente(datos: ClienteRegistroSchema, db: Session = Depends(get_db)):
@@ -153,6 +237,15 @@ async def registrar_cliente(datos: ClienteRegistroSchema, db: Session = Depends(
 @router.post("/clientes/login", response_model=ClienteResponseSchema)
 async def login_cliente(datos: ClienteLoginSchema, db: Session = Depends(get_db)):
     return ClienteServices.login_cliente(db, datos)
+
+
+@router.put("/clientes/{id_cliente}", response_model=ClienteResponseSchema)
+async def actualizar_cliente(
+    id_cliente: int,
+    datos: ClienteUpdateSchema,
+    db: Session = Depends(get_db)
+):
+    return ClienteServices.actualizar_cliente(db, id_cliente, datos)
 
 
 @router.get("/clientes/{id_cliente}", response_model=ClienteResponseSchema)
@@ -174,6 +267,8 @@ async def obtener_direcciones(id_cliente: int, db: Session = Depends(get_db)):
     return DireccionServices.obtener_direcciones(db, id_cliente)
 
 
+# ==================== CARRITO ====================
+
 @router.post("/carrito/agregar", response_model=CarritoResponseSchema)
 async def agregar_al_carrito(datos: CarritoAgregarSchema, db: Session = Depends(get_db)):
     return CarritoServices.agregar_al_carrito(db, datos)
@@ -193,6 +288,8 @@ async def eliminar_item_carrito(id_item: int, id_cliente: int = Query(...), db: 
 async def vaciar_carrito(id_cliente: int, db: Session = Depends(get_db)):
     return CarritoServices.vaciar_carrito(db, id_cliente)
 
+
+# ==================== PEDIDOS ====================
 
 @router.post("/pedidos/crear", response_model=PedidoResponseSchema)
 async def crear_pedido_desde_carrito(
@@ -220,3 +317,47 @@ async def actualizar_estado_pedido(
     db: Session = Depends(get_db)
 ):
     return PedidoServices.actualizar_estado_pedido(db, id_pedido, nuevo_estado)
+
+
+# ==================== MÉTODOS DE PAGO ====================
+
+@router.get("/clientes/{id_cliente}/tarjetas", response_model=List[MetodoPagoResponseSchema])
+async def obtener_tarjetas_cliente(id_cliente: int, db: Session = Depends(get_db)):
+    return MetodoPagoServices.obtener_tarjetas_cliente(db, id_cliente)
+
+
+@router.post("/clientes/{id_cliente}/tarjetas", response_model=MetodoPagoResponseSchema)
+async def agregar_tarjeta(
+    id_cliente: int,
+    datos: MetodoPagoCreateSchema,
+    db: Session = Depends(get_db)
+):
+    return MetodoPagoServices.agregar_tarjeta(db, id_cliente, datos)
+
+
+@router.put("/clientes/{id_cliente}/tarjetas/{id_tarjeta}", response_model=MetodoPagoResponseSchema)
+async def actualizar_tarjeta(
+    id_cliente: int,
+    id_tarjeta: int,
+    datos: MetodoPagoUpdateSchema,
+    db: Session = Depends(get_db)
+):
+    return MetodoPagoServices.actualizar_tarjeta(db, id_cliente, id_tarjeta, datos)
+
+
+@router.delete("/clientes/{id_cliente}/tarjetas/{id_tarjeta}")
+async def eliminar_tarjeta(
+    id_cliente: int,
+    id_tarjeta: int,
+    db: Session = Depends(get_db)
+):
+    return MetodoPagoServices.eliminar_tarjeta(db, id_cliente, id_tarjeta)
+
+
+@router.put("/clientes/{id_cliente}/tarjetas/{id_tarjeta}/predeterminada", response_model=MetodoPagoResponseSchema)
+async def establecer_tarjeta_predeterminada(
+    id_cliente: int,
+    id_tarjeta: int,
+    db: Session = Depends(get_db)
+):
+    return MetodoPagoServices.establecer_tarjeta_predeterminada(db, id_cliente, id_tarjeta)

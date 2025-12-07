@@ -1,12 +1,17 @@
 import { useCart } from '../../context/CartContext'
 import { useNavigate } from 'react-router-dom'
+import { obtenerClienteLocal } from '../../services/apiservice'
 
 export function CartSummary() {
     const { cartTotal, cartItems } = useCart()
     const navigate = useNavigate()
     const isEmpty = cartItems.length === 0
-    const shippingCost = isEmpty ? 0 : 140.00
-    const total = cartTotal + shippingCost
+    // const shippingCost = isEmpty ? 0 : 140.00
+    const total = cartTotal // Envío gratis
+
+    // Verificar si hay usuario logueado
+    const cliente = obtenerClienteLocal()
+    const isLoggedIn = cliente?.id_cliente && cliente?.nombre
 
     return (
         <div className="lg:sticky lg:top-24 h-fit">
@@ -28,10 +33,11 @@ export function CartSummary() {
                     <span>Valor del pedido</span>
                     <span>${cartTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+                {/* Envío gratis */}
+                {/* <div className="flex justify-between text-gray-700 dark:text-zinc-300">
                     <span>Costo estimado de envío</span>
                     <span>${shippingCost.toFixed(2)}</span>
-                </div>
+                </div> */}
             </div>
 
             {/* Total */}
@@ -40,8 +46,8 @@ export function CartSummary() {
                 <span>${total.toFixed(2)}</span>
             </div>
 
-            {/* Checkout Button */}
-            {!isEmpty && (
+            {/* Checkout Button - Solo mostrar si está logueado */}
+            {!isEmpty && isLoggedIn && (
                 <button
                     onClick={() => navigate('/checkout')}
                     className="w-full bg-black dark:bg-white text-white dark:text-black py-4 px-6 font-bold text-sm uppercase hover:bg-gray-900 dark:hover:bg-zinc-200 transition-colors mb-4"
@@ -50,19 +56,24 @@ export function CartSummary() {
                 </button>
             )}
 
-            {/* Login Button */}
-            <button className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 py-4 px-6 font-bold text-sm uppercase hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors mb-6">
-                INICIAR SESIÓN
-            </button>
+            {/* Login Button - Solo mostrar si NO está logueado */}
+            {!isLoggedIn && (
+                <button
+                    onClick={() => navigate('/login')}
+                    className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 py-4 px-6 font-bold text-sm uppercase hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors mb-6"
+                >
+                    INICIAR SESIÓN
+                </button>
+            )}
 
-            {/* Payment Methods */}
-            <div className="flex items-center justify-center">
-                <img
-                    src="https://placehold.co/300x40/FFFFFF/666666?text=Payment+Methods"
-                    alt="Métodos de pago"
-                    className="w-full max-w-xs"
-                />
-            </div>
+            {/* Mensaje cuando hay productos pero no está logueado */}
+            {!isEmpty && !isLoggedIn && (
+                <div className="text-center text-sm text-gray-600 dark:text-zinc-400 mb-4">
+                    Inicia sesión para continuar con tu compra
+                </div>
+            )}
+
+            {/* Payment Methods - Removido por seguridad */}
         </div>
     )
 }

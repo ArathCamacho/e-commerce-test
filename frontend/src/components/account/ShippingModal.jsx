@@ -9,13 +9,26 @@ export function ShippingModal({ isOpen, onClose, pedido, cliente }) {
     const [envio, setEnvio] = useState(null)
     const [checkingExisting, setCheckingExisting] = useState(true)
 
-    // Datos del cliente para el envío
+    // Datos del cliente para el envío (sin dirección)
     const [datosCliente, setDatosCliente] = useState({
-        nombre: cliente?.nombre || '',
-        telefono: cliente?.telefono || '',
-        email: cliente?.correo || '',
-        direccion: 'Dirección por defecto' // Aquí puedes obtener la dirección del pedido
+        nombre: cliente?.nombre || pedido?.fullData?.cliente?.nombre || '',
+        telefono: cliente?.telefono || pedido?.fullData?.cliente?.telefono || '',
+        email: cliente?.correo || pedido?.fullData?.cliente?.correo || '',
+        pais: 'México'
     })
+
+
+    // Actualizar datos del cliente cuando cambien las props
+    useEffect(() => {
+        if (cliente || pedido) {
+            setDatosCliente({
+                nombre: cliente?.nombre || '',
+                telefono: cliente?.telefono || '',
+                email: cliente?.correo || '',
+                pais: 'México'
+            })
+        }
+    }, [cliente, pedido])
 
     // Verificar si ya existe un envío para este pedido
     useEffect(() => {
@@ -95,7 +108,7 @@ export function ShippingModal({ isOpen, onClose, pedido, cliente }) {
             setLoading(true)
             const envioActualizado = await EnvioService.consultar(envio.id_envio)
             setEnvio(envioActualizado)
-            setSuccess('🔄 Estado actualizado')
+            setSuccess('Estado actualizado')
         } catch (err) {
             setError('Error al actualizar estado')
         } finally {
@@ -202,16 +215,23 @@ export function ShippingModal({ isOpen, onClose, pedido, cliente }) {
                         disabled={loading}
                         className="w-full bg-blue-600 text-white py-2 px-4 rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                     >
-                        {loading ? 'Actualizando...' : '🔄 Actualizar Estado'}
+                        {loading ? 'Actualizando...' : 'Actualizar Estado'}
                     </button>
                 </div>
             ) : (
                 /* No existe envío - permitir crearlo */
                 <div className="space-y-4">
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                        <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-                            📦 No hay información de envío para este pedido. Puedes crear una solicitud de envío ahora.
-                        </p>
+                    {/* Información del cliente (solo lectura) */}
+                    <div className="space-y-3">
+                        <h4 className="font-medium text-black dark:text-zinc-100">
+                            Datos de Envío
+                        </h4>
+
+                        <div className="text-sm text-gray-700 dark:text-zinc-300 space-y-2">
+                            <p><strong>Nombre:</strong> {datosCliente.nombre}</p>
+                            <p><strong>Teléfono:</strong> {datosCliente.telefono}</p>
+                            <p><strong>Email:</strong> {datosCliente.email}</p>
+                        </div>
                     </div>
 
                     {/* Información del pedido */}
@@ -227,58 +247,11 @@ export function ShippingModal({ isOpen, onClose, pedido, cliente }) {
                         </p>
                     </div>
 
-                    {/* Datos del cliente (editables) */}
-                    <div className="space-y-3">
-                        <h4 className="font-medium text-black dark:text-zinc-100">
-                            Datos de Envío
-                        </h4>
-                        
-                        <input
-                            type="text"
-                            value={datosCliente.nombre}
-                            onChange={(e) => setDatosCliente({...datosCliente, nombre: e.target.value})}
-                            placeholder="Nombre completo"
-                            className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded px-4 py-2 text-black dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        
-                        <input
-                            type="tel"
-                            value={datosCliente.telefono}
-                            onChange={(e) => setDatosCliente({...datosCliente, telefono: e.target.value})}
-                            placeholder="Teléfono"
-                            className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded px-4 py-2 text-black dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        
-                        <input
-                            type="email"
-                            value={datosCliente.email}
-                            onChange={(e) => setDatosCliente({...datosCliente, email: e.target.value})}
-                            placeholder="Email"
-                            className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded px-4 py-2 text-black dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        
-                        <textarea
-                            value={datosCliente.direccion}
-                            onChange={(e) => setDatosCliente({...datosCliente, direccion: e.target.value})}
-                            placeholder="Dirección completa"
-                            rows={3}
-                            className="w-full border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded px-4 py-2 text-black dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                        />
-                    </div>
-
                     <button
-                        onClick={crearEnvio}
-                        disabled={loading}
-                        className="w-full bg-[rgb(169,191,162)] text-white py-3 px-4 rounded font-medium hover:bg-[rgb(159,181,152)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => {/* TODO: Implementar edición de datos de envío */}}
+                        className="w-full bg-[rgb(169,191,162)] text-white py-3 px-4 rounded font-medium hover:bg-[rgb(159,181,152)] transition-colors"
                     >
-                        {loading ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Creando envío...
-                            </span>
-                        ) : (
-                            '📦 Crear Solicitud de Envío'
-                        )}
+                        Editar datos de envío
                     </button>
                 </div>
             )}

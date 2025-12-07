@@ -7,6 +7,7 @@ export function Register() {
     const [nombre, setNombre] = useState('')
     const [apellido, setApellido] = useState('')
     const [email, setEmail] = useState('')
+    const [telefono, setTelefono] = useState('')
     const [password, setPassword] = useState('')
     const [passwordStrength, setPasswordStrength] = useState(0)
     const [passwordFeedback, setPasswordFeedback] = useState('')
@@ -58,6 +59,7 @@ export function Register() {
                 nombre: nombre,
                 apellido: apellido,
                 correo: email,
+                telefono: telefono,
                 contrasena: password
             })
 
@@ -128,6 +130,15 @@ export function Register() {
                     placeholder="Correo electrónico"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full h-[45px] px-4 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-base font-light focus:outline-none focus:border-[rgb(169,191,162)] transition-colors"
+                />
+
+                <input
+                    type="tel"
+                    placeholder="Teléfono"
+                    value={telefono}
+                    onChange={(e) => setTelefono(e.target.value)}
                     required
                     className="w-full h-[45px] px-4 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-base font-light focus:outline-none focus:border-[rgb(169,191,162)] transition-colors"
                 />

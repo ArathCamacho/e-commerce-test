@@ -6,7 +6,8 @@ const CheckoutContext = createContext()
 export function CheckoutProvider({ children }) {
     const [userInfo, setUserInfo] = useState({
         name: '',
-        email: ''
+        email: '',
+        phone: ''
     })
 
     const [address, setAddress] = useState({
@@ -17,12 +18,11 @@ export function CheckoutProvider({ children }) {
         country: 'México'
     })
 
-    const [shipping, setShipping] = useState({
-        name: '',
-        phone: '+52 662 154 5465'
-    })
-
     const [paymentMethod, setPaymentMethod] = useState(null)
+
+    // Estados para controlar modales
+    const [showAddressModal, setShowAddressModal] = useState(false)
+    const [showPaymentModal, setShowPaymentModal] = useState(false)
 
     // Cargar información del cliente al montar
     useEffect(() => {
@@ -36,12 +36,9 @@ export function CheckoutProvider({ children }) {
             const fullName = `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim()
             setUserInfo({
                 name: fullName,
-                email: cliente.correo || ''
+                email: cliente.correo || '',
+                phone: cliente.telefono || ''
             })
-            setShipping(prev => ({
-                ...prev,
-                name: fullName
-            }))
         }
     }
 
@@ -73,30 +70,75 @@ export function CheckoutProvider({ children }) {
         setUserInfo(newInfo)
     }
 
-    const updateAddress = (newAddress) => {
-        setAddress(newAddress)
-    }
+    const updateAddress = async (newAddress) => {
+        try {
+            const cliente = obtenerClienteLocal()
+            if (!cliente?.id_cliente) {
+                setAddress(newAddress)
+                return
+            }
 
-    const updateShipping = (newShipping) => {
-        setShipping(newShipping)
+            // Si la dirección editada no tiene id_direccion, guardarla como nueva dirección
+            if (!newAddress.id_direccion) {
+                const direccionData = {
+                    calle: newAddress.street,
+                    ciudad: newAddress.city,
+                    codigo_postal: newAddress.zipCode,
+                    estado: newAddress.state || 'Sonora', // Default state if not provided
+                    referencias: `Dirección de envío - ${new Date().toLocaleDateString()}`
+                }
+
+                const nuevaDireccion = await DireccionService.agregar(cliente.id_cliente, direccionData)
+                console.log('Nueva dirección guardada:', nuevaDireccion)
+
+                // Actualizar el estado con la dirección guardada
+                const updatedAddress = {
+                    id_direccion: nuevaDireccion.id_direccion,
+                    street: nuevaDireccion.calle,
+                    zipCode: nuevaDireccion.codigo_postal,
+                    city: nuevaDireccion.ciudad,
+                    state: nuevaDireccion.estado,
+                    country: 'México'
+                }
+                setAddress(updatedAddress)
+                console.log('Estado de dirección actualizado:', updatedAddress)
+            } else {
+                // Si ya tiene id_direccion, solo actualizar el estado
+                setAddress(newAddress)
+            }
+        } catch (error) {
+            console.error('Error updating address:', error)
+            // En caso de error, actualizar el estado local de todas formas
+            setAddress(newAddress)
+        }
     }
 
     const savePaymentMethod = (paymentData) => {
         setPaymentMethod(paymentData)
     }
 
+    const openAddressModal = () => setShowAddressModal(true)
+    const closeAddressModal = () => setShowAddressModal(false)
+
+    const openPaymentModal = () => setShowPaymentModal(true)
+    const closePaymentModal = () => setShowPaymentModal(false)
+
     return (
         <CheckoutContext.Provider
             value={{
                 userInfo,
                 address,
-                shipping,
                 paymentMethod,
                 updateUserInfo,
                 updateAddress,
-                updateShipping,
                 savePaymentMethod,
-                loadDirecciones
+                loadDirecciones,
+                showAddressModal,
+                showPaymentModal,
+                openAddressModal,
+                closeAddressModal,
+                openPaymentModal,
+                closePaymentModal
             }}
         >
             {children}

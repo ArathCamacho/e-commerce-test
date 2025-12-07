@@ -4,7 +4,8 @@ import { Modal } from '../common/Modal'
 export function EditInfoModal({ isOpen, onClose, onSave, initialData }) {
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
-        email: initialData?.email || ''
+        email: initialData?.email || '',
+        telefono: initialData?.telefono || ''
     })
     const [errors, setErrors] = useState({})
 
@@ -13,7 +14,8 @@ export function EditInfoModal({ isOpen, onClose, onSave, initialData }) {
         if (isOpen) {
             setFormData({
                 name: initialData?.name || '',
-                email: initialData?.email || ''
+                email: initialData?.email || '',
+                telefono: initialData?.telefono || ''
             })
             setErrors({})
         }
@@ -30,6 +32,12 @@ export function EditInfoModal({ isOpen, onClose, onSave, initialData }) {
             newErrors.email = 'El correo electrónico es requerido'
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = 'El correo electrónico no es válido'
+        }
+
+        if (!formData.telefono.trim()) {
+            newErrors.telefono = 'El teléfono es requerido'
+        } else if (!/^\+?[0-9\s\-\(\)]{10,}$/.test(formData.telefono.trim())) {
+            newErrors.telefono = 'El teléfono no es válido'
         }
 
         setErrors(newErrors)
@@ -82,6 +90,21 @@ export function EditInfoModal({ isOpen, onClose, onSave, initialData }) {
                         placeholder="ejemplo@correo.com"
                     />
                     {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-zinc-100 mb-2 uppercase">
+                        Teléfono
+                    </label>
+                    <input
+                        type="tel"
+                        value={formData.telefono}
+                        onChange={(e) => handleChange('telefono', e.target.value)}
+                        className={`w-full px-4 py-3 bg-white dark:bg-zinc-900 border ${errors.telefono ? 'border-red-500' : 'border-gray-300 dark:border-zinc-700'
+                            } text-gray-900 dark:text-zinc-100 focus:outline-none focus:border-black dark:focus:border-white transition-colors`}
+                        placeholder="+52 662 123 4567"
+                    />
+                    {errors.telefono && <p className="mt-1 text-sm text-red-500">{errors.telefono}</p>}
                 </div>
 
                 <div className="flex gap-3 pt-4">

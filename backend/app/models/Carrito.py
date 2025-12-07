@@ -13,9 +13,9 @@ class Carrito(Base):
     id_cliente = Column(Integer, ForeignKey("cliente.id_cliente"), nullable=False)
     creado_en = Column(DateTime, default=datetime.utcnow)
     
-    # Relaciones
-    cliente = relationship("Cliente", back_populates="carritos")
-    items = relationship("CarritoItem", back_populates="carrito", cascade="all, delete-orphan")  # ✅ CORREGIDO
+    # Relaciones - Comentadas para evitar problemas de configuración
+    # cliente = relationship("Cliente", back_populates="carritos")
+    # items = relationship("CarritoItem", back_populates="carrito", cascade="all, delete-orphan")
 
 
 class CarritoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
@@ -29,9 +29,9 @@ class CarritoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
     color = Column(String(50), nullable=True)
     talla = Column(String(20), nullable=True)
     
-    # Relaciones
-    carrito = relationship("Carrito", back_populates="items")
-    producto = relationship("Producto", back_populates="items_carrito")
+    # Relaciones - Comentadas para evitar problemas de configuración
+    # carrito = relationship("Carrito", back_populates="items")
+    # producto = relationship("Producto", back_populates="items_carrito")
 
 
 # Schemas de Pydantic

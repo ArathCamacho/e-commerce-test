@@ -15,12 +15,12 @@ class Pedido(Base):
     total = Column(Numeric(10, 2), nullable=False)
     estado = Column(String(50), default="PENDIENTE")
     
-    # Relaciones
-    cliente = relationship("Cliente", back_populates="pedidos")
-    direccion = relationship("Direccion", back_populates="pedidos")
-    items = relationship("PedidoItem", back_populates="pedido")  # ✅ CORREGIDO
-    pagos = relationship("Pago", back_populates="pedido")
-    envios = relationship("Envio", back_populates="pedido")
+    # Relaciones - Usamos consultas SQL directas para evitar problemas de configuración
+    # cliente = relationship("Cliente", back_populates="pedidos")
+    # direccion = relationship("Direccion", back_populates="pedidos")
+    # items = relationship("PedidoItem", back_populates="pedido")
+    # pagos = relationship("Pago", back_populates="pedido")
+    # envios = relationship("Envio", back_populates="pedido")
 
 
 class PedidoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
@@ -32,9 +32,9 @@ class PedidoItem(Base):  # ✅ RENOMBRADO (sin guion bajo)
     cantidad = Column(Integer, nullable=False)
     precio_unitario = Column(Numeric(10, 2), nullable=False)
     
-    # Relaciones
-    pedido = relationship("Pedido", back_populates="items")
-    producto = relationship("Producto", back_populates="items_pedido")
+    # Relaciones - Comentadas para evitar problemas de configuración
+    # pedido = relationship("Pedido", back_populates="items")
+    # producto = relationship("Producto", back_populates="items_pedido")
 
 
 # Schemas de Pydantic

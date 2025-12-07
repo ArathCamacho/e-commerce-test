@@ -15,9 +15,9 @@ class Direccion(Base):
     codigo_postal = Column(String(10), nullable=False)
     referencias = Column(String(300))
     
-    # Relaciones
-    cliente = relationship("Cliente", back_populates="direcciones")
-    pedidos = relationship("Pedido", back_populates="direccion")
+    # Relaciones - Comentadas para evitar problemas de configuración
+    # cliente = relationship("Cliente", back_populates="direcciones")
+    # pedidos = relationship("Pedido", back_populates="direccion")
 
 # Schemas de Pydantic
 class DireccionResponseSchema(BaseModel):
