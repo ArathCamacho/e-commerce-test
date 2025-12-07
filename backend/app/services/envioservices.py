@@ -12,6 +12,13 @@ from app.models.Envio import (
     EnvioResponseSchema
 )
 
+from app.models.Pedido import (
+    Pedido,
+    DireccionEnPedidoSchema,
+    PedidoDetalleResponseSchema,
+    ClienteEnPedidoSchema
+)
+
 # Configurar logger en lugar de prints
 logger = logging.getLogger(__name__)
 
@@ -304,3 +311,66 @@ class EnvioServices:
         logger.info(f"Envío actualizado: {envio.id_envio} - {envio.estado_actual}")
         
         return EnvioResponseSchema.model_validate(envio)
+    
+    @staticmethod
+    def obtener_detalle_pedido(db: Session, id_pedido: int) -> PedidoDetalleResponseSchema:
+        """
+        Obtener detalle completo de un pedido incluyendo datos de cliente y dirección
+        
+        Args:
+            db: Sesión de base de datos
+            id_pedido: ID del pedido a consultar
+        
+        Returns:
+            PedidoDetalleResponseSchema con toda la información expandida
+        """
+        from app.models.Cliente import Cliente
+        from app.models.Direccion import Direccion
+        
+        # Buscar el pedido
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        
+        if not pedido:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pedido {id_pedido} no encontrado"
+            )
+        
+        # Buscar datos del cliente
+        cliente = db.query(Cliente).filter(Cliente.id_cliente == pedido.id_cliente).first()
+        
+        if not cliente:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Cliente {pedido.id_cliente} no encontrado"
+            )
+        
+        # Buscar datos de la dirección
+        direccion = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
+        
+        if not direccion:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dirección {pedido.id_direccion} no encontrada"
+            )
+        
+        # Construir respuesta
+        return PedidoDetalleResponseSchema(
+            id_pedido=pedido.id_pedido,
+            total=float(pedido.total),
+            estado=pedido.estado,
+            fecha_creacion=pedido.fecha_creacion,
+            cliente=ClienteEnPedidoSchema(
+                nombre=cliente.nombre,
+                apellido=cliente.apellido,
+                correo=cliente.correo,
+                telefono=cliente.telefono
+            ),
+            direccion=DireccionEnPedidoSchema(
+                calle=direccion.calle,
+                ciudad=direccion.ciudad,
+                estado=direccion.estado,
+                codigo_postal=direccion.codigo_postal,
+                referencias=direccion.referencias
+            )
+        )

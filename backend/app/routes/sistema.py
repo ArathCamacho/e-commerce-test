@@ -12,7 +12,7 @@ from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
 from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema, SolicitudCatalogoSchema
 from app.models.Categoria import CategoriaResponseSchema, Categoria
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
-from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema
+from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema, DireccionEnPedidoSchema, PedidoDetalleResponseSchema, ClienteEnPedidoSchema
 from app.services.pagoservices import PagoServices
 from app.models.Pago import PagoFrontendSchema, PagoResponseSchema
 from app.services.envioservices import EnvioServices
@@ -142,38 +142,7 @@ async def registrar_venta_externa(
     datos: VentaExternaRegistroSchemaV2, 
     db: Session = Depends(get_db)
 ):
-    await VentaExternaServices.registrar_venta_v2(db, datos)
-    """
-    📦 Registrar venta externa desde sistema externo
-    
-    Body esperado:
-    {
-      "order_id": "ORD-123",
-      "store_id": 1,
-      "price": 599.97,
-      "products": [
-        {"external_id": 1, "quantity": 2, "size": "M", "color": "Negro"},
-        {"external_id": 5, "quantity": 1, "size": "L"}
-      ],
-      "datos_cliente": {
-        "nombre": "Juan Pérez",
-        "telefono": "6621234567",
-        "email": "juan@example.com",
-        "direccion": "Calle Ejemplo 123, Col. Centro"
-      },
-      "payment_status": "PAID",
-      "created_at": "2025-12-07T10:00:00"  (opcional)
-    }
-    
-    ✅ Proceso:
-    - Valida productos y stock
-    - Crea pedido automático
-    - Descuenta inventario
-    - Guarda en venta_externa (1 fila = 1 orden)
-    
-    Retorna: 204 No Content si fue exitoso
-    """
-        
+    await VentaExternaServices.registrar_venta_v2(db, datos)        
     VentaExternaServices.registrar_venta_v2(db, datos)
 
 
@@ -184,14 +153,7 @@ async def consultar_ventas_externas(
     limit: int = Query(50, le=100, description="Máximo de resultados"),
     db: Session = Depends(get_db)
 ):
-    """
-    📋 Consultar lista de ventas externas
-    
-    Filtros opcionales:
-    - order_id: Buscar orden específica
-    - procesado: Estado (PROCESADO, ERROR, PENDIENTE)
-    - limit: Máximo de resultados (default 50, max 100)
-    """
+
     return VentaExternaServices.consultar_ventas_externas(
         db, order_id, procesado, limit
     )
@@ -202,30 +164,13 @@ async def consultar_orden_detalle(
     order_id: str,
     db: Session = Depends(get_db)
 ):
-    """
-    🔍 Ver detalle completo de una orden específica
-    
-    Retorna:
-    - Datos completos de la orden
-    - Lista de productos expandida
-    - Datos del cliente
-    - IDs de pedido y envío generados
-    - Estados y timestamps
-    """
+
     return VentaExternaServices.consultar_orden_completa(db, order_id)
 
 
 @router.get("/ventas/stats")
 async def obtener_stats_ventas_externas(db: Session = Depends(get_db)):
-    """
-    📊 Estadísticas generales de ventas externas
-    
-    Retorna:
-    - Total de órdenes
-    - Órdenes procesadas/error/pendientes
-    - Tasa de éxito
-    - Total vendido
-    """
+
     return VentaExternaServices.obtener_stats(db)
 
 
@@ -363,3 +308,8 @@ async def establecer_tarjeta_predeterminada(
     db: Session = Depends(get_db)
 ):
     return MetodoPagoServices.establecer_tarjeta_predeterminada(db, id_cliente, id_tarjeta)
+
+@router.get("/pedidos/{id_pedido}/detalle", response_model=PedidoDetalleResponseSchema)
+async def obtener_detalle_pedido(id_pedido: int, db: Session = Depends(get_db)):
+    """Obtener detalle completo del pedido con información de cliente y dirección"""
+    return PedidoServices.obtener_detalle_pedido(db, id_pedido)

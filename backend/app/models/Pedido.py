@@ -88,3 +88,38 @@ class PagoRequestSchema(BaseModel):
                 "cvv": "123"
             }
         }
+
+class ClienteEnPedidoSchema(BaseModel):
+    """Datos del cliente dentro del detalle del pedido"""
+    nombre: str
+    apellido: str
+    correo: str
+    telefono: str
+    
+    class Config:
+        from_attributes = True
+
+
+class DireccionEnPedidoSchema(BaseModel):
+    """Datos de dirección dentro del detalle del pedido"""
+    calle: str
+    ciudad: str
+    estado: str
+    codigo_postal: str
+    referencias: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class PedidoDetalleResponseSchema(BaseModel):
+    """Detalle completo del pedido con cliente y dirección"""
+    id_pedido: int
+    total: float
+    estado: str
+    fecha_creacion: datetime
+    cliente: ClienteEnPedidoSchema
+    direccion: DireccionEnPedidoSchema
+    
+    class Config:
+        from_attributes = True

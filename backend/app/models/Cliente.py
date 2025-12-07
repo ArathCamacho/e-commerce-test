@@ -15,13 +15,6 @@ class Cliente(Base):
     telefono = Column(String(20), nullable=False)
     contrasena = Column(String(300), nullable=False)
     fecha_registro = Column(DateTime, default=datetime.utcnow)
-    
-    # Relaciones
-    # Relaciones - Comentadas para evitar problemas de configuración SQLAlchemy
-    # direcciones = relationship("Direccion", back_populates="cliente")
-    # carritos = relationship("Carrito", back_populates="cliente")
-    # pedidos = relationship("Pedido", back_populates="cliente")
-    # metodos_pago = relationship("MetodoPago", back_populates="cliente")
 
 # Schemas de Pydantic
 class ClienteResponseSchema(BaseModel):
