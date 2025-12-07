@@ -107,7 +107,6 @@ class VentaExternaServices:
         
         No retorna nada - solo registra en BD (204 No Content)
         """
-        store_id = datos.store_id
         
         # 1. VERIFICAR SI LA ORDEN YA EXISTE
         venta_existe = db.query(VentaExterna).filter(
@@ -120,20 +119,19 @@ class VentaExternaServices:
                 detail=f"La orden {datos.order_id} ya fue registrada anteriormente"
             )
         
-        # 2. VALIDAR TODOS LOS PRODUCTOS
+        # 2. VALIDAR TODOS LOS PRODUCTOS (SIN FILTRAR POR STORE)
         productos_validados = []
         errores = []
         
         for prod_data in datos.products:
             producto = db.query(Producto).filter(
                 Producto.id_producto == prod_data.external_id,
-                Producto.store_id == store_id,
                 Producto.activo == True
             ).first()
             
             if not producto:
                 errores.append(
-                    f"Producto {prod_data.external_id} no encontrado o inactivo en store {store_id}"
+                    f"Producto {prod_data.external_id} no encontrado o inactivo"
                 )
                 continue
                 

@@ -78,7 +78,6 @@ class VentaExternaRegistroSchemaV2(BaseModel):
     Schema para recibir ventas externas desde sistema externo
     """
     order_id: str
-    store_id: int  # ← No se guarda en tabla, pero se usa para validar productos
     price: float
     products: List[ProductoVentaExterna] = Field(..., min_length=1)
     datos_cliente: DatosClienteVentaExterna
@@ -89,7 +88,6 @@ class VentaExternaRegistroSchemaV2(BaseModel):
         json_schema_extra = {
             "example": {
                 "order_id": "ORD-EXT-12345",
-                "store_id": 1,
                 "price": 599.97,
                 "products": [
                     {
