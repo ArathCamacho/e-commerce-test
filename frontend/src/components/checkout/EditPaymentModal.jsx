@@ -70,3 +70,4 @@ export function EditPaymentModal({ isOpen, onClose, onSave, initialData }) {
         </>
     )
 }
+

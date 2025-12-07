@@ -193,3 +193,4 @@ class MetodoPagoServices:
             fecha_creacion=tarjeta.fecha_creacion,
             ultima_actualizacion=tarjeta.ultima_actualizacion
         )
+

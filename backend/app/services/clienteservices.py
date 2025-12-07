@@ -268,7 +268,6 @@ class CarritoServices:
             db.add(nuevo_item)
 
         db.commit()
-        db.refresh(carrito)
 
         logger.info(f"Producto {datos.id_producto} agregado al carrito {carrito.id_carrito}")
 
