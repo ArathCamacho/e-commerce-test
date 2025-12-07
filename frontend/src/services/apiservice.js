@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // Configuración base de la API
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8003/api";
-//const API_BASE_URL = "https://e-commerce-test-mm6o.onrender.com/api";
+//const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8003/api";
+const API_BASE_URL = "https://e-commerce-test-mm6o.onrender.com/api";
 //const API_BASE_URL = import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api";
 
 // Crear instancia de axios con configuración base
@@ -58,10 +58,10 @@ export const ProductoService = {
     // Primero intentamos obtener del catálogo completo
     const response = await apiClient.get("/catalogo/all");
     const productos = response.data.productos || response.data || [];
-    const producto = productos.find(p => p.id == idProducto);
-    
+    const producto = productos.find((p) => p.id == idProducto);
+
     if (producto) return producto;
-    
+
     // Si no está, lanzamos error
     throw new Error("Producto no encontrado");
   },
@@ -93,7 +93,10 @@ export const ClienteService = {
 
   // Actualizar información de cliente
   actualizar: async (idCliente, datosCliente) => {
-    const response = await apiClient.put(`/clientes/${idCliente}`, datosCliente);
+    const response = await apiClient.put(
+      `/clientes/${idCliente}`,
+      datosCliente
+    );
     return response.data;
   },
 };
@@ -121,13 +124,19 @@ export const DireccionService = {
 
 export const CarritoService = {
   // Agregar producto al carrito
-  agregar: async (idCliente, idProducto, cantidad, color = null, talla = null) => {
+  agregar: async (
+    idCliente,
+    idProducto,
+    cantidad,
+    color = null,
+    talla = null
+  ) => {
     const response = await apiClient.post("/carrito/agregar", {
       id_cliente: idCliente,
       id_producto: idProducto,
       cantidad: cantidad,
       color: color,
-      talla: talla
+      talla: talla,
     });
     return response.data;
   },
@@ -258,27 +267,37 @@ export const MetodoPagoService = {
 
   // Agregar nueva tarjeta
   agregarTarjeta: async (idCliente, datosTarjeta) => {
-    const response = await apiClient.post(`/clientes/${idCliente}/tarjetas`, datosTarjeta);
+    const response = await apiClient.post(
+      `/clientes/${idCliente}/tarjetas`,
+      datosTarjeta
+    );
     return response.data;
   },
 
   // Actualizar tarjeta existente
   actualizarTarjeta: async (idCliente, idTarjeta, datosTarjeta) => {
-    const response = await apiClient.put(`/clientes/${idCliente}/tarjetas/${idTarjeta}`, datosTarjeta);
+    const response = await apiClient.put(
+      `/clientes/${idCliente}/tarjetas/${idTarjeta}`,
+      datosTarjeta
+    );
     return response.data;
   },
 
   // Eliminar tarjeta
   eliminarTarjeta: async (idCliente, idTarjeta) => {
-    const response = await apiClient.delete(`/clientes/${idCliente}/tarjetas/${idTarjeta}`);
+    const response = await apiClient.delete(
+      `/clientes/${idCliente}/tarjetas/${idTarjeta}`
+    );
     return response.data;
   },
 
   // Establecer tarjeta como predeterminada
   establecerPredeterminada: async (idCliente, idTarjeta) => {
-    const response = await apiClient.put(`/clientes/${idCliente}/tarjetas/${idTarjeta}/predeterminada`);
+    const response = await apiClient.put(
+      `/clientes/${idCliente}/tarjetas/${idTarjeta}/predeterminada`
+    );
     return response.data;
-  }
+  },
 };
 
 // ==================== VENTAS EXTERNAS ====================
