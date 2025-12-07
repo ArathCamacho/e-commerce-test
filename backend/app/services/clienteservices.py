@@ -276,15 +276,23 @@ class CarritoServices:
 
     @staticmethod
     def eliminar_item(db: Session, id_item: int, id_cliente: int):
-        item = db.query(CarritoItem).filter(CarritoItem.id_item == id_item).first()
+        # Verificar que el item existe y pertenece al cliente usando consulta SQL directa
+        from sqlalchemy import text
 
-        if not item:
+        query = text("""
+            SELECT ci.id_item
+            FROM carrito_item ci
+            JOIN carrito c ON ci.id_carrito = c.id_carrito
+            WHERE ci.id_item = :id_item AND c.id_cliente = :id_cliente
+        """)
+
+        result = db.execute(query, {"id_item": id_item, "id_cliente": id_cliente}).fetchone()
+
+        if not result:
             raise HTTPException(status_code=404, detail="Item no encontrado en el carrito")
 
-        # Verificar que el item pertenece al cliente
-        if item.carrito.id_cliente != id_cliente:
-            raise HTTPException(status_code=403, detail="No autorizado para eliminar este item")
-
+        # Eliminar el item
+        item = db.query(CarritoItem).filter(CarritoItem.id_item == id_item).first()
         db.delete(item)
         db.commit()
 
