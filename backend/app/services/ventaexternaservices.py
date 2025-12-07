@@ -15,8 +15,12 @@ from app.models.VentaExterna import (
     DatosClienteVentaExterna
 )
 from app.models.Producto import Producto
-from app.models.Pedido import Pedido, PedidoItem
-from app.models.Cliente import Cliente
+from app.services.envioservices import EnvioServices
+from app.models.Envio import (
+    EnvioSolicitudSchema,
+    DatosClienteEnvioSchema,
+    ProductoEnvioSchema
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,29 +28,69 @@ logger = logging.getLogger(__name__)
 class VentaExternaServices:
     
     @staticmethod
-    def _obtener_o_crear_cliente_externo(db: Session) -> Cliente:
-        """Helper: Obtiene o crea el cliente para ventas externas"""
-        cliente_externo = db.query(Cliente).filter(
-            Cliente.correo == "ventas.externas@sistema.com"
-        ).first()
+    async def _crear_envio_automatico(
+        db: Session,
+        datos: VentaExternaRegistroSchemaV2,
+        productos_validados: List[Dict],
+        id_venta_externa: int
+    ) -> None:
+        """
+        Helper: Crea automáticamente el envío para la venta externa
         
-        if not cliente_externo:
-            cliente_externo = Cliente(
-                nombre="Cliente",
-                apellido="Externo",
-                correo="ventas.externas@sistema.com",
-                telefono="0000000000",
-                contrasena="N/A"
+        Se llama DESPUÉS de que la venta ya fue guardada exitosamente.
+        Si falla, solo loguea el error (NO hace rollback).
+        """
+        try:
+            # Construir lista de productos para envío
+            productos_envio = []
+            for item in productos_validados:
+                producto = item['producto']
+                prod_data = item['data']
+                
+                productos_envio.append(
+                    ProductoEnvioSchema(
+                        sku=str(producto.id_producto),
+                        nombre=producto.nombre,
+                        cantidad=prod_data.quantity,
+                        precio_unitario=0.0  # NULL - no se calcula
+                    )
+                )
+            
+            # Construir solicitud de envío
+            envio_solicitud = EnvioSolicitudSchema(
+                id_orden_externa=datos.order_id,
+                id_orden_original=datos.order_id,  # Mismo order_id porque no hay pedido interno
+                servicio_origen="ventas_externas",
+                webhook_url="https://e-commerce-test-mm6o.onrender.com/api/envios/webhook",
+                datos_cliente=DatosClienteEnvioSchema(
+                    nombre=datos.datos_cliente.nombre,
+                    telefono=datos.datos_cliente.telefono,
+                    email=datos.datos_cliente.email,
+                    direccion=datos.datos_cliente.direccion
+                ),
+                productos=productos_envio
             )
-            db.add(cliente_externo)
+            
+            logger.info(f"🚚 Creando envío para orden {datos.order_id}")
+            
+            # Llamar servicio de envíos
+            envio_response = await EnvioServices.crear_envio(db, envio_solicitud)
+            
+            # Actualizar venta_externa con el id_envio
+            db.query(VentaExterna).filter(
+                VentaExterna.id_venta_externa == id_venta_externa
+            ).update({"id_envio_generado": envio_response.id_envio})
             db.commit()
-            db.refresh(cliente_externo)
-        
-        return cliente_externo
+            
+            logger.info(f"✅ Envío creado: {envio_response.id_envio} para orden {datos.order_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error al crear envío automático para {datos.order_id}: {str(e)}")
+            # NO lanzar excepción - la venta ya está procesada
     
     
     @staticmethod
-    def registrar_venta_v2(
+    async def registrar_venta_v2(
         db: Session, 
         datos: VentaExternaRegistroSchemaV2
     ) -> None:
@@ -156,8 +200,14 @@ class VentaExternaServices:
             
             # Commit de toda la transacción
             db.commit()
+            db.refresh(venta)  # Obtener el id_venta_externa
             
             logger.info(f"✅ Venta externa procesada: {datos.order_id} - Total: ${datos.price}")
+            
+            # 5. CREAR ENVÍO AUTOMÁTICAMENTE (fuera de la transacción principal)
+            await VentaExternaServices._crear_envio_automatico(
+                db, datos, productos_validados, venta.id_venta_externa
+            )
             
         except HTTPException:
             raise
