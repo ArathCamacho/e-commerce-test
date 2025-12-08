@@ -114,13 +114,25 @@ class PagoServices:
             
             # Construir dirección completa
             direccion_completa = f"{direccion.calle}, {direccion.ciudad}, {direccion.estado}, CP {direccion.codigo_postal}"
-            
-            # Construir lista de productos
+
+            # Construir lista de productos usando consulta SQL directa
+            from sqlalchemy import text
+            productos_query = text("""
+                SELECT
+                    pi.id_producto, pi.cantidad, pi.precio_unitario,
+                    p.nombre as nombre_producto
+                FROM pedido_item pi
+                JOIN producto p ON pi.id_producto = p.id_producto
+                WHERE pi.id_pedido = :id_pedido
+            """)
+
+            productos_result = db.execute(productos_query, {"id_pedido": pedido.id_pedido}).fetchall()
+
             productos_envio = []
-            for item in pedido.items:
+            for item in productos_result:
                 productos_envio.append(ProductoEnvioSchema(
                     sku=f"PROD-{item.id_producto}",
-                    nombre=item.producto.nombre,
+                    nombre=item.nombre_producto,
                     cantidad=item.cantidad,
                     precio_unitario=float(item.precio_unitario)
                 ))
