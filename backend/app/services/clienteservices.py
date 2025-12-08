@@ -320,6 +320,8 @@ class PedidoServices:
 
     @staticmethod
     def crear_pedido_desde_carrito(db: Session, id_cliente: int, id_direccion: int) -> PedidoResponseSchema:
+        from sqlalchemy import text
+
         # Verificar cliente
         cliente = db.query(Cliente).filter(Cliente.id_cliente == id_cliente).first()
         if not cliente:
@@ -337,27 +339,35 @@ class PedidoServices:
                 detail="Dirección no encontrada o no pertenece al cliente"
             )
 
-        # Obtener carrito
-        carrito = db.query(Carrito).filter(Carrito.id_cliente == id_cliente).first()
+        # Obtener items del carrito con información del producto usando consulta SQL directa
+        query = text("""
+            SELECT
+                ci.id_item, ci.id_producto, ci.cantidad, ci.precio_unitario,
+                p.nombre as nombre_producto, p.stock, p.activo, p.precio as precio_actual
+            FROM carrito_item ci
+            JOIN carrito c ON ci.id_carrito = c.id_carrito
+            JOIN producto p ON ci.id_producto = p.id_producto
+            WHERE c.id_cliente = :id_cliente
+        """)
 
-        if not carrito or not carrito.items:
+        carrito_items = db.execute(query, {"id_cliente": id_cliente}).fetchall()
+
+        if not carrito_items:
             raise HTTPException(status_code=400, detail="El carrito está vacío")
 
         # Calcular total y verificar stock
         total = Decimal('0.00')
-        for item in carrito.items:
-            producto = item.producto
-
-            if not producto.activo:
+        for item in carrito_items:
+            if not item.activo:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"El producto '{producto.nombre}' ya no está disponible"
+                    detail=f"El producto '{item.nombre_producto}' ya no está disponible"
                 )
 
-            if producto.stock < item.cantidad:
+            if item.stock < item.cantidad:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Stock insuficiente para '{producto.nombre}'. Disponible: {producto.stock}"
+                    detail=f"Stock insuficiente para '{item.nombre_producto}'. Disponible: {item.stock}"
                 )
 
             total += item.precio_unitario * item.cantidad
@@ -375,7 +385,7 @@ class PedidoServices:
         db.refresh(pedido)
 
         # Crear items del pedido y reducir stock
-        for item in carrito.items:
+        for item in carrito_items:
             pedido_item = PedidoItem(
                 id_pedido=pedido.id_pedido,
                 id_producto=item.id_producto,
@@ -384,14 +394,27 @@ class PedidoServices:
             )
             db.add(pedido_item)
 
-            # Reducir stock
-            item.producto.stock -= item.cantidad
+            # Reducir stock usando consulta SQL directa
+            update_stock_query = text("""
+                UPDATE producto
+                SET stock = stock - :cantidad
+                WHERE id_producto = :id_producto
+            """)
+            db.execute(update_stock_query, {
+                "cantidad": item.cantidad,
+                "id_producto": item.id_producto
+            })
 
-        # Vaciar carrito
-        db.query(CarritoItem).filter(CarritoItem.id_carrito == carrito.id_carrito).delete()
+        # Vaciar carrito usando consulta SQL directa
+        delete_cart_query = text("""
+            DELETE FROM carrito_item
+            WHERE id_carrito = (
+                SELECT id_carrito FROM carrito WHERE id_cliente = :id_cliente
+            )
+        """)
+        db.execute(delete_cart_query, {"id_cliente": id_cliente})
 
         db.commit()
-        db.refresh(pedido)
 
         logger.info(f"Pedido creado: {pedido.id_pedido} - Total: ${total}")
 
