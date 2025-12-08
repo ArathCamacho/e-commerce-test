@@ -642,18 +642,23 @@ class PedidoServices:
                     detail=f"El campo '{campo}' es requerido"
                 )
 
-        # Verificar que existe una dirección asociada al pedido
+        # Buscar la dirección actual asociada al pedido
         direccion_actual = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
         if not direccion_actual:
             raise HTTPException(status_code=404, detail="Dirección actual no encontrada")
 
-        # NO MODIFICAR la dirección original en la tabla direccion
-        # Solo actualizar el servicio externo de envíos si existe un envío
+        # Actualizar la dirección en la base de datos local
+        direccion_actual.calle = nueva_direccion['calle']
+        direccion_actual.ciudad = nueva_direccion['ciudad']
+        direccion_actual.estado = nueva_direccion['estado']
+        direccion_actual.codigo_postal = nueva_direccion['codigo_postal']
+        direccion_actual.referencias = nueva_direccion.get('referencias', '')
 
         # Verificar si existe un envío para este pedido
         envio = db.query(Envio).filter(Envio.id_pedido == id_pedido).first()
 
-        # Si existe envío con código de seguimiento, actualizar SOLO en servicio externo
+        # Si existe envío con código de seguimiento, también actualizar en servicio externo
+        envio_actualizado_externo = False
         if envio and envio.codigo_seguimiento:
             try:
                 # Formatear dirección para el servicio externo: "CALLE, CIUDAD, ESTADO, CP"
@@ -665,26 +670,21 @@ class PedidoServices:
                     direccion_formateada
                 )
 
+                envio_actualizado_externo = True
                 logger.info(f"Dirección actualizada en servicio externo para pedido {id_pedido}")
-
-                # NO hacer commit porque no modificamos nada en la BD local
-                # Solo actualizamos el servicio externo
-
-                return {
-                    "message": "Dirección de envío actualizada exitosamente en el servicio de envíos",
-                    "direccion_original_preservada": True,
-                    "envio_actualizado": True
-                }
 
             except Exception as e:
                 logger.error(f"Error actualizando dirección en servicio externo: {str(e)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Error al actualizar dirección en servicio de envíos: {str(e)}"
-                )
-        else:
-            # No hay envío con código de seguimiento
-            raise HTTPException(
-                status_code=400,
-                detail="No se puede actualizar la dirección: el pedido no tiene un envío con código de seguimiento asignado"
-            )
+                # No fallar la operación si el servicio externo falla, pero loggear el error
+                # La dirección local ya se actualizó, así que continuamos
+
+        # Guardar cambios en la base de datos local
+        db.commit()
+
+        logger.info(f"Dirección actualizada para pedido {id_pedido} (local y externo: {envio_actualizado_externo})")
+
+        return {
+            "message": "Dirección actualizada exitosamente",
+            "direccion_actualizada": True,
+            "envio_actualizado": envio_actualizado_externo
+        }
