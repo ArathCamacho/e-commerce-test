@@ -11,6 +11,8 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
     const [cliente, setCliente] = useState(null)
     const [showDetailsModal, setShowDetailsModal] = useState(false)
     const [selectedOrderDetails, setSelectedOrderDetails] = useState(null)
+    const [orderDetailData, setOrderDetailData] = useState(null)
+    const [loadingDetail, setLoadingDetail] = useState(false)
 
     useEffect(() => {
         const loadClienteData = async () => {
@@ -124,15 +126,36 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
         }
     }
 
-    const handleVerDetalles = (order) => {
+    const handleVerDetalles = async (order) => {
         console.log('Abriendo detalles del pedido:', order)
         setSelectedOrderDetails(order)
+        setLoadingDetail(true)
         setShowDetailsModal(true)
+
+        try {
+            // Llamar al endpoint de detalle del pedido
+            const response = await fetch(`http://127.0.0.1:8003/api/pedidos/${order.id}/detalle`)
+            if (response.ok) {
+                const detailData = await response.json()
+                setOrderDetailData(detailData)
+                console.log('Datos del detalle del pedido:', detailData)
+            } else {
+                console.error('Error al obtener detalle del pedido:', response.status)
+                setOrderDetailData(null)
+            }
+        } catch (error) {
+            console.error('Error al cargar detalle del pedido:', error)
+            setOrderDetailData(null)
+        } finally {
+            setLoadingDetail(false)
+        }
     }
 
     const handleCloseDetailsModal = () => {
         setShowDetailsModal(false)
         setSelectedOrderDetails(null)
+        setOrderDetailData(null)
+        setLoadingDetail(false)
     }
 
     if (loading) {
@@ -284,36 +307,70 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                         </h2>
 
                         <div className="space-y-4">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
-                                    Dirección de Envío
-                                </h3>
-                                <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
-                                    <div className="flex items-start gap-3">
-                                        <svg className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <div className="text-sm text-gray-600 dark:text-zinc-400">
-                                            <p><strong>Calle:</strong> Dirección no especificada</p>
-                                            <p><strong>Ciudad:</strong> Ciudad no especificada</p>
-                                            <p><strong>Código Postal:</strong> N/A</p>
-                                            <p><strong>Estado:</strong> Estado no especificado</p>
-                                            <p><strong>País:</strong> México</p>
+                            {/* Información del Cliente */}
+                            {loadingDetail ? (
+                                <div className="text-center py-4">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                                    <p className="text-sm text-gray-500 mt-2">Cargando detalles...</p>
+                                </div>
+                            ) : orderDetailData ? (
+                                <>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
+                                            Información del Cliente
+                                        </h3>
+                                        <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
+                                            <div className="flex items-start gap-3">
+                                                <svg className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <div className="text-sm text-gray-600 dark:text-zinc-400">
+                                                    <p><strong>Nombre:</strong> {orderDetailData.cliente.nombre} {orderDetailData.cliente.apellido}</p>
+                                                    <p><strong>Email:</strong> {orderDetailData.cliente.correo}</p>
+                                                    <p><strong>Teléfono:</strong> {orderDetailData.cliente.telefono}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
+                                            Dirección de Envío
+                                        </h3>
+                                        <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
+                                            <div className="flex items-start gap-3">
+                                                <svg className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <div className="text-sm text-gray-600 dark:text-zinc-400">
+                                                    <p><strong>Calle:</strong> {orderDetailData.direccion.calle}</p>
+                                                    <p><strong>Ciudad:</strong> {orderDetailData.direccion.ciudad}</p>
+                                                    <p><strong>Estado:</strong> {orderDetailData.direccion.estado}</p>
+                                                    <p><strong>Código Postal:</strong> {orderDetailData.direccion.codigo_postal}</p>
+                                                    {orderDetailData.direccion.referencias && (
+                                                        <p><strong>Referencias:</strong> {orderDetailData.direccion.referencias}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-red-500">Error al cargar los detalles del pedido</p>
                                 </div>
-                            </div>
+                            )}
 
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
                                     Información del Pedido
                                 </h3>
                                 <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg space-y-2">
-                                    <p><strong>ID del Pedido:</strong> {selectedOrderDetails.id}</p>
-                                    <p><strong>Estado:</strong> {selectedOrderDetails.status}</p>
-                                    <p><strong>Fecha:</strong> {selectedOrderDetails.fullData?.fecha_creacion ? new Date(selectedOrderDetails.fullData.fecha_creacion).toLocaleDateString() : 'Fecha no disponible'}</p>
-                                    <p><strong>Total:</strong> ${selectedOrderDetails.total}</p>
+                                    <p><strong>ID del Pedido:</strong> {orderDetailData ? orderDetailData.id_pedido : selectedOrderDetails.id}</p>
+                                    <p><strong>Estado:</strong> {orderDetailData ? orderDetailData.estado : selectedOrderDetails.status}</p>
+                                    <p><strong>Fecha:</strong> {orderDetailData ? new Date(orderDetailData.fecha_creacion).toLocaleDateString() : (selectedOrderDetails.fullData?.fecha_creacion ? new Date(selectedOrderDetails.fullData.fecha_creacion).toLocaleDateString() : 'Fecha no disponible')}</p>
+                                    <p><strong>Total:</strong> ${orderDetailData ? orderDetailData.total : selectedOrderDetails.total}</p>
                                     <p><strong>Items:</strong> {selectedOrderDetails.fullData?.items ? selectedOrderDetails.fullData.items.length : 0}</p>
                                 </div>
                             </div>
