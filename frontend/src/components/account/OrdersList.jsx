@@ -19,7 +19,7 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
 
     useEffect(() => {
         const loadClienteData = async () => {
-            const clienteData = obtenerClienteLocal()
+        const clienteData = obtenerClienteLocal()
             if (clienteData?.id_cliente) {
                 try {
                     // Obtener información completa del cliente desde el backend
@@ -30,7 +30,7 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                     setCliente(clienteData) // Usar datos básicos como fallback
                 }
             }
-            loadOrders()
+        loadOrders()
         }
 
         loadClienteData()
@@ -97,12 +97,12 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
             
             const response = await PedidoService.listarPorCliente(cliente.id_cliente)
             const rawOrders = response.pedidos || response || []
-
+            
             // Map backend data to UI format
             const mappedOrders = rawOrders.map(order => {
                 const firstItem = order.items && order.items.length > 0 ? order.items[0] : null
                 const product = firstItem ? firstItem.producto : null
-
+                
                 return {
                     id: order.id_pedido,
                     status: order.estado,
@@ -276,7 +276,7 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                     order.statusKey === 'shipped' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                                     'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                                 }`}>
-                                    {order.status}
+                                {order.status}
                                 </span>
                             </div>
                         </div>
@@ -287,13 +287,13 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                 {/* Imagen del producto */}
                                 <div className="flex-shrink-0">
                                     <div className="w-24 h-24 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden mx-auto lg:mx-0">
-                                        <img
-                                            src={order.image}
-                                            alt={order.title}
+                                <img
+                                    src={order.image}
+                                    alt={order.title}
                                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                                        />
+                                />
                                     </div>
-                                </div>
+                            </div>
 
                                 {/* Información del pedido */}
                                 <div className="flex-1 space-y-4">
@@ -302,9 +302,9 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                             {order.title}
                                         </h4>
                                         <p className="text-sm text-gray-600 dark:text-zinc-400">
-                                            {order.subtitle}
-                                        </p>
-                                    </div>
+                                    {order.subtitle}
+                                </p>
+                            </div>
 
                                     {/* Detalles con íconos */}
                                     <div className="grid grid-cols-2 gap-4">
@@ -335,25 +335,25 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                     </div>
 
                                     <div className="flex flex-col gap-2 w-full lg:w-auto">
-                                        {order.statusKey === 'pending' && (
+                                    {order.statusKey === 'pending' && (
                                             <button className="w-full lg:w-32 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                                 </svg>
-                                                Pagar ahora
-                                            </button>
-                                        )}
+                                            Pagar ahora
+                                        </button>
+                                    )}
 
-                                        {order.statusKey === 'shipped' && (
+                                    {order.statusKey === 'shipped' && (
                                             <button className="w-full lg:w-32 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5H19M7 13v8a2 2 0 002 2h10a2 2 0 002-2v-3" />
                                                 </svg>
-                                                Añadir al carrito
-                                            </button>
-                                        )}
+                                            Añadir al carrito
+                                        </button>
+                                    )}
 
-                                        <button
+                                    <button
                                             onClick={() => {
                                                 console.log('Botón Ver detalles clickeado', order)
                                                 handleVerDetalles(order)
@@ -365,7 +365,7 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             Ver detalles
-                                        </button>
+                                    </button>
                                     </div>
                                 </div>
                             </div>
@@ -431,13 +431,10 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
                                                 <div className="text-sm text-gray-600 dark:text-zinc-400">
-                                                    <p><strong>Calle:</strong> {orderDetailData.direccion.calle}</p>
-                                                    <p><strong>Ciudad:</strong> {orderDetailData.direccion.ciudad}</p>
-                                                    <p><strong>Estado:</strong> {orderDetailData.direccion.estado}</p>
-                                                    <p><strong>Código Postal:</strong> {orderDetailData.direccion.codigo_postal}</p>
-                                                    {orderDetailData.direccion.referencias && (
-                                                        <p><strong>Referencias:</strong> {orderDetailData.direccion.referencias}</p>
-                                                    )}
+                                                    <p className="font-medium">
+                                                        {orderDetailData.direccion.calle}, {orderDetailData.direccion.ciudad}, {orderDetailData.direccion.estado}, CP {orderDetailData.direccion.codigo_postal}
+                                                        {orderDetailData.direccion.referencias && ` - ${orderDetailData.direccion.referencias}`}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
