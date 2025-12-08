@@ -120,6 +120,26 @@ class PedidoDetalleResponseSchema(BaseModel):
     fecha_creacion: datetime
     cliente: ClienteEnPedidoSchema
     direccion: DireccionEnPedidoSchema
-    
+
     class Config:
         from_attributes = True
+
+
+class ActualizarDireccionPedidoSchema(BaseModel):
+    """Esquema para actualizar la dirección de envío de un pedido"""
+    calle: str
+    ciudad: str
+    estado: str
+    codigo_postal: str
+    referencias: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "calle": "Nueva Calle 123",
+                "ciudad": "Nueva Ciudad",
+                "estado": "Nuevo Estado",
+                "codigo_postal": "12345",
+                "referencias": "Cerca del parque"
+            }
+        }

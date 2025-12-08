@@ -13,6 +13,9 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
     const [selectedOrderDetails, setSelectedOrderDetails] = useState(null)
     const [orderDetailData, setOrderDetailData] = useState(null)
     const [loadingDetail, setLoadingDetail] = useState(false)
+    const [showEditAddressModal, setShowEditAddressModal] = useState(false)
+    const [editingAddress, setEditingAddress] = useState(null)
+    const [savingAddress, setSavingAddress] = useState(false)
 
     useEffect(() => {
         const loadClienteData = async () => {
@@ -156,6 +159,79 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
         setSelectedOrderDetails(null)
         setOrderDetailData(null)
         setLoadingDetail(false)
+    }
+
+    const handleEditarDireccion = (orderData) => {
+        setEditingAddress({
+            id_pedido: orderData.id_pedido,
+            calle: orderData.direccion.calle,
+            ciudad: orderData.direccion.ciudad,
+            estado: orderData.direccion.estado,
+            codigo_postal: orderData.direccion.codigo_postal,
+            referencias: orderData.direccion.referencias || ''
+        })
+        setShowEditAddressModal(true)
+    }
+
+    const handleCloseEditAddressModal = () => {
+        setShowEditAddressModal(false)
+        setEditingAddress(null)
+        setSavingAddress(false)
+    }
+
+    const handleSaveAddress = async () => {
+        if (!editingAddress) return
+
+        setSavingAddress(true)
+        try {
+            const response = await fetch(`http://127.0.0.1:8003/api/pedidos/${editingAddress.id_pedido}/direccion`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    calle: editingAddress.calle,
+                    ciudad: editingAddress.ciudad,
+                    estado: editingAddress.estado,
+                    codigo_postal: editingAddress.codigo_postal,
+                    referencias: editingAddress.referencias
+                })
+            })
+
+            if (response.ok) {
+                const result = await response.json()
+                console.log('Dirección actualizada:', result)
+
+                // Cerrar modal de edición
+                handleCloseEditAddressModal()
+
+                // Recargar los detalles del pedido para mostrar la dirección actualizada
+                const order = selectedOrderDetails
+                setLoadingDetail(true)
+                try {
+                    const detailResponse = await fetch(`http://127.0.0.1:8003/api/pedidos/${order.id}/detalle`)
+                    if (detailResponse.ok) {
+                        const detailData = await detailResponse.json()
+                        setOrderDetailData(detailData)
+                    }
+                } catch (error) {
+                    console.error('Error recargando detalles:', error)
+                } finally {
+                    setLoadingDetail(false)
+                }
+
+            } else {
+                const errorData = await response.json()
+                console.error('Error actualizando dirección:', errorData)
+                alert('Error al actualizar la dirección: ' + (errorData.detail || 'Error desconocido'))
+            }
+        } catch (error) {
+            console.error('Error guardando dirección:', error)
+            alert('Error de conexión al guardar la dirección')
+        } finally {
+            setSavingAddress(false)
+        }
     }
 
     if (loading) {
@@ -334,9 +410,20 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                     </div>
 
                                     <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
-                                            Dirección de Envío
-                                        </h3>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+                                                Dirección de Envío
+                                            </h3>
+                                            <button
+                                                onClick={() => handleEditarDireccion(orderDetailData)}
+                                                className="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                Editar
+                                            </button>
+                                        </div>
                                         <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
                                             <div className="flex items-start gap-3">
                                                 <svg className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -403,6 +490,104 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
                                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                             >
                                 Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Modal de Edición de Dirección */}
+            {showEditAddressModal && editingAddress && (
+                <Modal isOpen={showEditAddressModal} onClose={handleCloseEditAddressModal}>
+                    <div className="p-6">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100 mb-4">
+                            Editar Dirección de Envío
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+                                    Calle *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingAddress.calle}
+                                    onChange={(e) => setEditingAddress({...editingAddress, calle: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+                                    placeholder="Ej: Av. Principal 123"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+                                    Ciudad *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingAddress.ciudad}
+                                    onChange={(e) => setEditingAddress({...editingAddress, ciudad: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+                                    placeholder="Ej: Hermosillo"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+                                    Estado *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingAddress.estado}
+                                    onChange={(e) => setEditingAddress({...editingAddress, estado: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+                                    placeholder="Ej: Sonora"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+                                    Código Postal *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingAddress.codigo_postal}
+                                    onChange={(e) => setEditingAddress({...editingAddress, codigo_postal: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+                                    placeholder="Ej: 83288"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+                                    Referencias
+                                </label>
+                                <textarea
+                                    value={editingAddress.referencias}
+                                    onChange={(e) => setEditingAddress({...editingAddress, referencias: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+                                    placeholder="Ej: Entre calles X y Y, casa blanca"
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={handleCloseEditAddressModal}
+                                disabled={savingAddress}
+                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveAddress}
+                                disabled={savingAddress || !editingAddress.calle || !editingAddress.ciudad || !editingAddress.estado || !editingAddress.codigo_postal}
+                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {savingAddress && (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                )}
+                                {savingAddress ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
                         </div>
                     </div>

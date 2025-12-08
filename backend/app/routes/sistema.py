@@ -1,4 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+
+# Función básica de autenticación (temporal - se debe mejorar con JWT real)
+def get_current_user(request: Request) -> dict:
+    """
+    Función básica de autenticación que maneja diferentes formatos de token
+    """
+    authorization = request.headers.get("authorization")
+    if not authorization:
+        # Para desarrollo, si no hay auth, usar usuario por defecto (cliente 10)
+        return {"id_cliente": 10}
+
+    try:
+        # Intentar parsear como "Bearer <token>"
+        parts = authorization.split()
+        if len(parts) == 2:
+            scheme, token = parts
+            if scheme.lower() == "bearer":
+                # Si el token es numérico, asumir que es user_id directo
+                try:
+                    user_id = int(token)
+                    return {"id_cliente": user_id}
+                except ValueError:
+                    # Aquí iría la lógica de decodificar JWT
+                    # Por ahora, retornar usuario por defecto
+                    return {"id_cliente": 10}
+        else:
+            # Formato no reconocido, usar usuario por defecto
+            return {"id_cliente": 10}
+
+    except Exception:
+        # En caso de error, usar usuario por defecto
+        return {"id_cliente": 10}
 from sqlalchemy.orm import Session
 from database import get_db
 from app.services.sistemaservices import SistemaServices
@@ -12,7 +44,7 @@ from app.models.Direccion import DireccionCreateSchema, DireccionResponseSchema
 from app.models.Producto import ProductoCreateSchema, ProductoUpdateSchema, ProductoResponseSchema, SolicitudCatalogoSchema
 from app.models.Categoria import CategoriaResponseSchema, Categoria
 from app.models.Carrito import CarritoAgregarSchema, CarritoResponseSchema
-from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema, DireccionEnPedidoSchema, PedidoDetalleResponseSchema, ClienteEnPedidoSchema
+from app.models.Pedido import PedidoCreateSchema, PedidoResponseSchema, PagoRequestSchema, DireccionEnPedidoSchema, PedidoDetalleResponseSchema, ClienteEnPedidoSchema, ActualizarDireccionPedidoSchema
 from app.services.pagoservices import PagoServices
 from app.models.Pago import PagoFrontendSchema, PagoResponseSchema
 from app.services.envioservices import EnvioServices
@@ -313,3 +345,18 @@ async def establecer_tarjeta_predeterminada(
 async def obtener_detalle_pedido(id_pedido: int, db: Session = Depends(get_db)):
     """Obtener detalle completo del pedido con información de cliente y dirección"""
     return PedidoServices.obtener_detalle_pedido(db, id_pedido)
+
+@router.patch("/pedidos/{id_pedido}/direccion")
+async def actualizar_direccion_pedido(
+    id_pedido: int,
+    datos: ActualizarDireccionPedidoSchema,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Actualizar la dirección de envío de un pedido
+    También actualiza en el servicio externo de envíos si existe un envío creado
+    """
+    return PedidoServices.actualizar_direccion_pedido(
+        db, id_pedido, current_user["id_cliente"], datos.dict()
+    )

@@ -335,3 +335,49 @@ class VentaExternaServices:
             "tasa_exito": round((ordenes_procesadas / total_ordenes * 100), 2) if total_ordenes > 0 else 0,
             "total_vendido": float(total_vendido)
         }
+
+    @staticmethod
+    def actualizar_direccion_envio(tracking_code: str, nueva_direccion: str) -> dict:
+        """
+        Actualizar dirección de envío en el servicio externo
+
+        Args:
+            tracking_code: Código de seguimiento del envío
+            nueva_direccion: Nueva dirección en formato "CALLE, CIUDAD, ESTADO, CP"
+
+        Returns:
+            dict: Respuesta del servicio externo
+        """
+        import requests
+
+        try:
+            url = f"https://gestion-envios-sz3x.onrender.com/interna/ordenes/{tracking_code}/direccion"
+
+            payload = {
+                "nueva_direccion": nueva_direccion
+            }
+
+            headers = {
+                "Content-Type": "application/json"
+            }
+
+            logger.info(f"Actualizando dirección en servicio externo para tracking {tracking_code}")
+
+            response = requests.patch(url, json=payload, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                logger.info(f"Dirección actualizada exitosamente en servicio externo para {tracking_code}")
+                return response.json()
+            else:
+                logger.error(f"Error actualizando dirección externa: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error en servicio externo: {response.status_code}"
+                )
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error de conexión con servicio externo: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error de conexión con servicio de envíos"
+            )

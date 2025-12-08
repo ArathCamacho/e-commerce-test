@@ -607,3 +607,80 @@ class PedidoServices:
                 referencias=direccion.referencias
             )
         )
+
+    @staticmethod
+    def actualizar_direccion_pedido(db: Session, id_pedido: int, id_cliente: int,
+                                   nueva_direccion: dict) -> dict:
+        """
+        Actualizar la dirección de envío de un pedido y sincronizar con servicio externo si existe envío
+        """
+        from app.models.Direccion import Direccion
+        from app.models.Envio import Envio
+        from app.services.ventaexternaservices import VentaExternaServices
+
+        # Verificar que el pedido existe y pertenece al cliente
+        pedido = db.query(Pedido).filter(Pedido.id_pedido == id_pedido).first()
+        if not pedido:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+        if pedido.id_cliente != id_cliente:
+            raise HTTPException(status_code=403, detail="No autorizado para modificar este pedido")
+
+        # Solo permitir editar pedidos que no estén enviados o completados
+        if pedido.estado in ['ENVIADO', 'ENTREGADO']:
+            raise HTTPException(
+                status_code=400,
+                detail="No se puede modificar la dirección de un pedido ya enviado"
+            )
+
+        # Verificar que la nueva dirección tenga los campos requeridos
+        campos_requeridos = ['calle', 'ciudad', 'estado', 'codigo_postal']
+        for campo in campos_requeridos:
+            if campo not in nueva_direccion or not nueva_direccion[campo]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El campo '{campo}' es requerido"
+                )
+
+        # Buscar la dirección actual
+        direccion_actual = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
+        if not direccion_actual:
+            raise HTTPException(status_code=404, detail="Dirección actual no encontrada")
+
+        # Actualizar la dirección
+        direccion_actual.calle = nueva_direccion['calle']
+        direccion_actual.ciudad = nueva_direccion['ciudad']
+        direccion_actual.estado = nueva_direccion['estado']
+        direccion_actual.codigo_postal = nueva_direccion['codigo_postal']
+        direccion_actual.referencias = nueva_direccion.get('referencias', '')
+
+        # Verificar si existe un envío para este pedido
+        envio = db.query(Envio).filter(Envio.id_pedido == id_pedido).first()
+
+        # Si existe envío con código de seguimiento, actualizar en servicio externo
+        if envio and envio.codigo_seguimiento:
+            try:
+                # Formatear dirección para el servicio externo: "CALLE, CIUDAD, ESTADO, CP"
+                direccion_formateada = f"{nueva_direccion['calle']}, {nueva_direccion['ciudad']}, {nueva_direccion['estado']}, {nueva_direccion['codigo_postal']}"
+
+                # Llamar al servicio externo para actualizar la dirección
+                resultado_externo = VentaExternaServices.actualizar_direccion_envio(
+                    envio.codigo_seguimiento,
+                    direccion_formateada
+                )
+
+                logger.info(f"Dirección actualizada en servicio externo para pedido {id_pedido}")
+
+            except Exception as e:
+                logger.error(f"Error actualizando dirección en servicio externo: {str(e)}")
+                # No fallar la operación si el servicio externo falla, solo loggear
+
+        db.commit()
+
+        logger.info(f"Dirección actualizada para pedido {id_pedido}")
+
+        return {
+            "message": "Dirección actualizada exitosamente",
+            "direccion_actualizada": True,
+            "envio_actualizado": envio and envio.codigo_seguimiento is not None
+        }
