@@ -642,17 +642,27 @@ class PedidoServices:
                     detail=f"El campo '{campo}' es requerido"
                 )
 
-        # Buscar la dirección actual asociada al pedido
-        direccion_actual = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
-        if not direccion_actual:
-            raise HTTPException(status_code=404, detail="Dirección actual no encontrada")
+        # Verificar que existe una dirección asociada al pedido (solo para validación)
+        direccion_original = db.query(Direccion).filter(Direccion.id_direccion == pedido.id_direccion).first()
+        if not direccion_original:
+            raise HTTPException(status_code=404, detail="Dirección original no encontrada")
 
-        # Actualizar la dirección en la base de datos local
-        direccion_actual.calle = nueva_direccion['calle']
-        direccion_actual.ciudad = nueva_direccion['ciudad']
-        direccion_actual.estado = nueva_direccion['estado']
-        direccion_actual.codigo_postal = nueva_direccion['codigo_postal']
-        direccion_actual.referencias = nueva_direccion.get('referencias', '')
+        # NO modificar la dirección original. En su lugar, crear una NUEVA dirección
+        # para este pedido específico, así no afectamos otros pedidos que usen la misma dirección
+        nueva_direccion_db = Direccion(
+            id_cliente=id_cliente,
+            calle=nueva_direccion['calle'],
+            ciudad=nueva_direccion['ciudad'],
+            estado=nueva_direccion['estado'],
+            codigo_postal=nueva_direccion['codigo_postal'],
+            referencias=nueva_direccion.get('referencias', '')
+        )
+
+        db.add(nueva_direccion_db)
+        db.flush()  # Para obtener el id_direccion de la nueva dirección
+
+        # Asignar la nueva dirección al pedido
+        pedido.id_direccion = nueva_direccion_db.id_direccion
 
         # Verificar si existe un envío para este pedido
         envio = db.query(Envio).filter(Envio.id_pedido == id_pedido).first()
