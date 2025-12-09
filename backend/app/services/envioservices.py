@@ -252,14 +252,17 @@ class EnvioServices:
         
         El sistema de envíos llama este método cuando hay cambios.
         """
-        logger.info(f"Webhook recibido: {datos}")
+        logger.info(f"🔔 Webhook recibido: {json.dumps(datos, ensure_ascii=False, indent=2)}")
         
         id_orden_externa = datos.get("id_orden_externa")
         if not id_orden_externa:
+            logger.error("❌ Webhook sin id_orden_externa")
             raise HTTPException(
                 status_code=400,
                 detail="Falta id_orden_externa en el webhook"
             )
+        
+        logger.info(f"🔍 Buscando envío con id_orden_externa: {id_orden_externa}")
         
         # Buscar el envío
         envio = db.query(Envio).filter(
@@ -267,15 +270,33 @@ class EnvioServices:
         ).first()
         
         if not envio:
+            logger.error(f"❌ No se encontró envío con id_orden_externa: {id_orden_externa}")
             raise HTTPException(
                 status_code=404,
                 detail=f"No se encontró envío con id_orden_externa: {id_orden_externa}"
             )
         
+        logger.info(f"✅ Envío encontrado: id_envio={envio.id_envio}, id_pedido={envio.id_pedido}, estado_actual={envio.estado_actual}")
+        
+        # Guardar estado anterior para logging
+        estado_anterior = envio.estado_actual
+        
         # Actualizar datos
-        envio.codigo_seguimiento = datos.get("codigo_seguimiento", envio.codigo_seguimiento)
-        envio.estado_actual = datos.get("estado_actual", envio.estado_actual)
-        envio.ubicacion_actual = datos.get("ubicacion_actual", envio.ubicacion_actual)
+        nuevo_codigo_seguimiento = datos.get("codigo_seguimiento")
+        nuevo_estado = datos.get("estado_actual")
+        nueva_ubicacion = datos.get("ubicacion_actual")
+        
+        if nuevo_codigo_seguimiento:
+            envio.codigo_seguimiento = nuevo_codigo_seguimiento
+            logger.info(f"📦 Código de seguimiento actualizado: {nuevo_codigo_seguimiento}")
+        
+        if nuevo_estado:
+            envio.estado_actual = nuevo_estado
+            logger.info(f"📊 Estado actualizado: {estado_anterior} -> {nuevo_estado}")
+        
+        if nueva_ubicacion:
+            envio.ubicacion_actual = nueva_ubicacion
+            logger.info(f"📍 Ubicación actualizada: {nueva_ubicacion}")
         
         # Actualizar fecha
         fecha_str = datos.get("fecha_actualizacion")
@@ -300,9 +321,48 @@ class EnvioServices:
         
         envio.response_json = json.dumps(actualizaciones, ensure_ascii=False, indent=2)
         
-        db.commit()
-        db.refresh(envio)
+        # Actualizar estado del pedido relacionado si existe
+        if envio.id_pedido:
+            from app.models.Pedido import Pedido
+            pedido = db.query(Pedido).filter(Pedido.id_pedido == envio.id_pedido).first()
+            if pedido:
+                nuevo_estado_envio = datos.get("estado_actual", envio.estado_actual)
+                
+                # Mapear estados del envío a estados del pedido
+                estado_pedido_anterior = pedido.estado
+                
+                if nuevo_estado_envio:
+                    nuevo_estado_envio_upper = nuevo_estado_envio.upper()
+                    
+                    # Mapeo de estados
+                    if nuevo_estado_envio_upper in ["EN_TRANSITO", "ENVIADO", "EN CAMINO", "SHIPPED"]:
+                        if pedido.estado not in ["ENTREGADO", "CANCELADO"]:
+                            pedido.estado = "ENVIADO"
+                            logger.info(f"Pedido {pedido.id_pedido} actualizado a ENVIADO (envío: {nuevo_estado_envio})")
+                    
+                    elif nuevo_estado_envio_upper in ["ENTREGADO", "DELIVERED", "COMPLETADO"]:
+                        pedido.estado = "ENTREGADO"
+                        logger.info(f"Pedido {pedido.id_pedido} actualizado a ENTREGADO (envío: {nuevo_estado_envio})")
+                    
+                    elif nuevo_estado_envio_upper in ["CANCELADO", "CANCELLED", "CANCELADO"]:
+                        if pedido.estado != "ENTREGADO":
+                            pedido.estado = "CANCELADO"
+                            logger.info(f"Pedido {pedido.id_pedido} actualizado a CANCELADO (envío: {nuevo_estado_envio})")
+                    
+                    elif nuevo_estado_envio_upper in ["ERROR", "FALLIDO", "FAILED"]:
+                        # No cambiar el estado del pedido si hay error en el envío
+                        logger.warning(f"Error en envío {envio.id_envio} pero manteniendo estado del pedido {pedido.id_pedido}")
         
-        logger.info(f"Envío actualizado: {envio.id_envio} - {envio.estado_actual}")
+        try:
+            db.commit()
+            db.refresh(envio)
+            logger.info(f"✅ Commit exitoso - Envío {envio.id_envio} actualizado a estado: {envio.estado_actual}")
+        except Exception as e:
+            logger.error(f"❌ Error al hacer commit: {str(e)}")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al guardar actualización: {str(e)}"
+            )
         
         return EnvioResponseSchema.model_validate(envio)
