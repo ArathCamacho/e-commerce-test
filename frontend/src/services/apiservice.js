@@ -1,9 +1,10 @@
 import axios from "axios";
 
 // Configuración base de la API
+// Usar variable de entorno si está disponible, sino usar localhost para desarrollo
 //const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8003/api";
+// Para producción en Render, descomentar la siguiente línea:
 const API_BASE_URL = "https://e-commerce-test-mm6o.onrender.com/api";
-//const API_BASE_URL = import.meta.env.VITE_API_URL || "https://e-commerce-test-mm6o.onrender.com/api";
 
 // Crear instancia de axios con configuración base
 const apiClient = axios.create({
@@ -182,6 +183,12 @@ export const PedidoService = {
     return response.data;
   },
 
+  // Obtener detalle completo de un pedido (con cliente y dirección)
+  obtenerDetalle: async (idPedido) => {
+    const response = await apiClient.get(`/pedidos/${idPedido}/detalle`);
+    return response.data;
+  },
+
   // Listar pedidos de un cliente
   listarPorCliente: async (idCliente) => {
     const response = await apiClient.get(`/pedidos/cliente/${idCliente}`);
@@ -193,6 +200,12 @@ export const PedidoService = {
     const response = await apiClient.put(`/pedidos/${idPedido}/estado`, null, {
       params: { nuevo_estado: nuevoEstado },
     });
+    return response.data;
+  },
+
+  // Actualizar dirección de envío de un pedido
+  actualizarDireccion: async (idPedido, direccion) => {
+    const response = await apiClient.patch(`/pedidos/${idPedido}/direccion`, direccion);
     return response.data;
   },
 };
@@ -318,6 +331,20 @@ export const VentaExternaService = {
 };
 
 // ==================== INTERCEPTORES (OPCIONAL) ====================
+
+// Interceptor de request para agregar token de autenticación automáticamente
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Interceptor de respuesta para manejo de errores
 apiClient.interceptors.response.use(

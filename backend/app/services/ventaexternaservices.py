@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from typing import List, Dict, Any
 import logging
+import httpx
 
 from app.models.VentaExterna import (
     VentaExterna,
@@ -348,8 +349,6 @@ class VentaExternaServices:
         Returns:
             dict: Respuesta del servicio externo
         """
-        import requests
-
         try:
             url = f"https://gestion-envios-sz3x.onrender.com/interna/ordenes/{tracking_code}/direccion"
 
@@ -363,7 +362,9 @@ class VentaExternaServices:
 
             logger.info(f"Actualizando dirección en servicio externo para tracking {tracking_code}")
 
-            response = requests.patch(url, json=payload, headers=headers, timeout=10)
+            # Usar httpx de forma síncrona
+            with httpx.Client(timeout=10.0) as client:
+                response = client.patch(url, json=payload, headers=headers)
 
             if response.status_code == 200:
                 logger.info(f"Dirección actualizada exitosamente en servicio externo para {tracking_code}")
@@ -375,9 +376,21 @@ class VentaExternaServices:
                     detail=f"Error en servicio externo: {response.status_code}"
                 )
 
-        except requests.exceptions.RequestException as e:
+        except httpx.TimeoutException as e:
+            logger.error(f"Timeout al conectar con servicio externo: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Timeout al conectar con servicio de envíos"
+            )
+        except httpx.RequestError as e:
             logger.error(f"Error de conexión con servicio externo: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="Error de conexión con servicio de envíos"
+            )
+        except Exception as e:
+            logger.error(f"Error inesperado actualizando dirección externa: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error actualizando dirección en servicio externo: {str(e)}"
             )

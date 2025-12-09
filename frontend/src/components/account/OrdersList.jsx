@@ -136,19 +136,19 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
         setShowDetailsModal(true)
 
         try {
-            // Llamar al endpoint de detalle del pedido
-            const response = await fetch(`http://127.0.0.1:8003/api/pedidos/${order.id}/detalle`)
-            if (response.ok) {
-                const detailData = await response.json()
-                setOrderDetailData(detailData)
-                console.log('Datos del detalle del pedido:', detailData)
-            } else {
-                console.error('Error al obtener detalle del pedido:', response.status)
-                setOrderDetailData(null)
-            }
+            // Llamar al endpoint de detalle del pedido usando PedidoService
+            const detailData = await PedidoService.obtenerDetalle(order.id)
+            setOrderDetailData(detailData)
+            console.log('Datos del detalle del pedido:', detailData)
         } catch (error) {
             console.error('Error al cargar detalle del pedido:', error)
             setOrderDetailData(null)
+            // Mostrar mensaje de error más descriptivo
+            if (error.response) {
+                console.error('Error de respuesta:', error.response.status, error.response.data)
+            } else if (error.request) {
+                console.error('Error de red: No se recibió respuesta del servidor')
+            }
         } finally {
             setLoadingDetail(false)
         }
@@ -184,51 +184,36 @@ export function OrdersList({ filterStatus = 'all', timeFilter = 'last-year' }) {
 
         setSavingAddress(true)
         try {
-            const response = await fetch(`http://127.0.0.1:8003/api/pedidos/${editingAddress.id_pedido}/direccion`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    calle: editingAddress.calle,
-                    ciudad: editingAddress.ciudad,
-                    estado: editingAddress.estado,
-                    codigo_postal: editingAddress.codigo_postal,
-                    referencias: editingAddress.referencias
-                })
-            })
-
-            if (response.ok) {
-                const result = await response.json()
-                console.log('Dirección actualizada:', result)
-
-                // Cerrar modal de edición
-                handleCloseEditAddressModal()
-
-                // Recargar los detalles del pedido para mostrar la dirección actualizada
-                const order = selectedOrderDetails
-                setLoadingDetail(true)
-                try {
-                    const detailResponse = await fetch(`http://127.0.0.1:8003/api/pedidos/${order.id}/detalle`)
-                    if (detailResponse.ok) {
-                        const detailData = await detailResponse.json()
-                        setOrderDetailData(detailData)
-                    }
-                } catch (error) {
-                    console.error('Error recargando detalles:', error)
-                } finally {
-                    setLoadingDetail(false)
-                }
-
-            } else {
-                const errorData = await response.json()
-                console.error('Error actualizando dirección:', errorData)
-                alert('Error al actualizar la dirección: ' + (errorData.detail || 'Error desconocido'))
+            const direccionData = {
+                calle: editingAddress.calle,
+                ciudad: editingAddress.ciudad,
+                estado: editingAddress.estado,
+                codigo_postal: editingAddress.codigo_postal,
+                referencias: editingAddress.referencias
             }
+
+            const result = await PedidoService.actualizarDireccion(editingAddress.id_pedido, direccionData)
+            console.log('Dirección actualizada:', result)
+
+            // Cerrar modal de edición
+            handleCloseEditAddressModal()
+
+            // Recargar los detalles del pedido para mostrar la dirección actualizada
+            const order = selectedOrderDetails
+            setLoadingDetail(true)
+            try {
+                const detailData = await PedidoService.obtenerDetalle(order.id)
+                setOrderDetailData(detailData)
+            } catch (error) {
+                console.error('Error recargando detalles:', error)
+            } finally {
+                setLoadingDetail(false)
+            }
+
         } catch (error) {
             console.error('Error guardando dirección:', error)
-            alert('Error de conexión al guardar la dirección')
+            const errorMessage = error.response?.data?.detail || error.message || 'Error desconocido'
+            alert('Error al actualizar la dirección: ' + errorMessage)
         } finally {
             setSavingAddress(false)
         }
